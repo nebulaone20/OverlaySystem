@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Intermission</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    font-family: Arial;
+    position: relative;
+    background: #000;
+}
+
+/* ── Frame graphic sits above video, below all UI ── */
+#frame-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1920px;
+    height: 1080px;
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* ── Map video fills the grey box in the frame ── */
+#main-box {
+    position: absolute;
+    top: 254px;
+    left: 100px;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    /* scale to fill grey box: 1076×605 */
+    transform: translateX(-120%) scale(0.5604, 0.5602);
+    transition: transform 0.6s ease;
+    overflow: hidden;
+    z-index: 5;
+}
+#main-box.show {
+    transform: translateX(0) scale(0.5604, 0.5602);
+}
+
+/* ── Graphics overlay (same zone as main-box) ── */
+#graphics-overlay {
+    position: absolute;
+    top: 254px;
+    left: 100px;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    transform: scale(0.5604, 0.5602);
+    overflow: hidden;
+    z-index: 15;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+}
+
+/* ── Timer - top-left of top bar ── */
+#timer-box {
+    position: absolute;
+    top: 62px;
+    left: 70px;
+    width: 660px;
+    height: 191px;
+    overflow: hidden;
+    z-index: 20;
+}
+
+#timer-display {
+    position: absolute;
+    left: 30px;
+    top: 20px;
+    color: #ffffff;
+    font-family: "Jefferies", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 90px;
+    letter-spacing: 7px;
+    pointer-events: none;
+}
+
+#timer-event-text {
+    position: absolute;
+    left: 30px;
+    bottom: 20px;
+    color: #ffffff;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 2px;
+    pointer-events: none;
+}
+
+/* ── Sponsor - top-right of top bar ── */
+#sponsor-box {
+    position: absolute;
+    top: 62px;
+    right: 70px;
+    width: 500px;
+    height: 191px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#sponsor-box img {
+    position: absolute;
+    max-width: 85%;
+    max-height: 85%;
+    object-fit: contain;
+    opacity: 0;
+    transition: opacity 1.5s ease;
+}
+#sponsor-box img.active { opacity: 1; }
+/* Keep .show class no-op so JS doesn't break */
+#sponsor-box.show { right: 70px; }
+
+/* ── Match box - right panel ── */
+#match-box {
+    position: absolute;
+    top: 254px;
+    left: 1208px;
+    width: 612px;
+    height: 602px;
+    overflow: hidden;
+    z-index: 20;
+}
+
+#games-container {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.game-section {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 30px;
+}
+
+.game-separator {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 0;
+    height: 3px;
+    background: rgb(10,105,164);
+}
+
+.game-team {
+    display: flex;
+    align-items: center;
+    width: 40%;
+    gap: 12px;
+}
+
+.game-team.right {
+    justify-content: flex-end;
+}
+
+.game-team-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+}
+
+.game-logo {
+    width: 80px;
+    height: 80px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    flex-shrink: 0;
+}
+
+.game-tag {
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-top: 5px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.game-score {
+    color: white;
+    font-size: 52px;
+    font-weight: bold;
+    min-width: 36px;
+    text-align: center;
+}
+
+.game-vs {
+    width: 80px;
+    text-align: center;
+    color: white;
+    font-size: 32px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.game-label {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    white-space: nowrap;
+    opacity: 0.8;
+}
+
+#BOF {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: white;
+    font-size: 18px;
+    letter-spacing: 1px;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 21;
+}
+
+/* ── Music / now playing - bottom strip (first cell) ── */
+#music-box {
+    position: absolute;
+    bottom: 68px;
+    left: 100px;
+    width: 230px;
+    height: 112px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    z-index: 20;
+}
+
+#scroll-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+#scroll-text {
+    position: absolute;
+    white-space: nowrap;
+    font-size: 13px;
+    color: white;
+    animation: scroll 12s linear infinite;
+}
+
+@keyframes scroll { 0% { left: 100%; } 100% { left: -100%; } }
+
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies.otf") format("opentype");
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies bold.otf") format("opentype");
+    font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Frame graphic - sits above video, below UI text -->
+<img id="frame-img" src="Intermission26Frame.png" alt="">
+
+<!-- Map video box -->
+<div id="main-box">
+    <video id="map-video" autoplay muted loop playsinline style="width:100%; height:100%; object-fit:cover;">
+        <source src="" type="video/mp4">
+    </video>
+</div>
+
+<!-- Graphics rotation overlay -->
+<div id="graphics-overlay">
+    <img
+        id="graphics-image"
+        src=""
+        style="width:100%; height:100%; object-fit:cover; opacity:1; transition:opacity 0.5s ease;"
+    />
+</div>
+
+<!-- Timer -->
+<div id="timer-box">
+    <div id="timer-display">00:00:00</div>
+    <div id="timer-event-text">Event</div>
+</div>
+
+<!-- Sponsor logos -->
+<div id="sponsor-box">
+    <img class="sponsor-img active" src="Rising_Tide_White.png" alt="Sponsor">
+    <img class="sponsor-img" src="Wave OCE Logo_white.png" alt="Sponsor">
+    <img class="sponsor-img" src="Wave OCE Rising Tides Brandmark Logo_White.png" alt="Sponsor">
+</div>
+
+<!-- Match / games panel -->
+<div id="match-box">
+    <div id="games-container"></div>
+    <div id="BOF">BEST OF</div>
+</div>
+
+<!-- Music / now playing -->
+<div id="music-box">
+    <div id="scroll-container">
+        <div id="scroll-text"></div>
+    </div>
+</div>
+
+<script>
+// ── D1 Polling - replaces Firebase ──────────────────────────────────────────
+// Account ID comes from ?id= URL param
+const accountId = new URLSearchParams(location.search).get("id");
+if (!accountId) document.body.innerHTML = "<p style='color:red;padding:40px;font-size:24px;'>Missing ?id= in URL</p>";
+
+const API = ""; // same origin via Cloudflare Worker
+let lastUpdatedAt = 0;
+let overlayState = {};
+
+/* ===================== */
+/* DYNAMIC GAME SECTIONS */
+/* ===================== */
+
+let gameAmount = 1;
+
+function createGameSections(amount) {
+
+    amount = Math.max(1, Math.min(5, amount));
+
+    gameAmount = amount;
+
+    const container = document.getElementById("games-container");
+    const bof = document.getElementById("BOF");
+
+    container.innerHTML = "";
+
+    // =========================
+    // SINGLE GAME = OLD LAYOUT
+    // =========================
+    if (amount === 1) {
+
+        bof.style.display = "block";
+
+        const section = document.createElement("div");
+        section.className = "game-section";
+
+        section.innerHTML = `
+            <div style="
+                position:absolute;
+                top:80px;
+                left:50%;
+                transform:translateX(-50%);
+                width:210px;
+                height:210px;
+                background-size:contain;
+                background-repeat:no-repeat;
+                background-position:center;
+            " id="logo-top-1"></div>
+
+            <div style="
+                position:absolute;
+                top:580px;
+                left:50%;
+                transform:translateX(-50%);
+                width:210px;
+                height:210px;
+                background-size:contain;
+                background-repeat:no-repeat;
+                background-position:center;
+            " id="logo-bottom-1"></div>
+
+            <div style="
+                position:absolute;
+                top:360px;
+                left:50%;
+                transform:translateX(-50%);
+                color:white;
+                font-size:18px;
+                font-weight:bold;
+            " id="tag-top-1">[TOP]</div>
+
+            <div style="
+                position:absolute;
+                top:495px;
+                left:50%;
+                transform:translateX(-50%);
+                color:white;
+                font-size:18px;
+                font-weight:bold;
+            " id="tag-bottom-1">[BOT]</div>
+
+            <div style="
+                position:absolute;
+                top:401px;
+                left:50%;
+                transform:translateX(-50%);
+                color:white;
+                font-size:60px;
+                font-weight:bold;
+            ">VS</div>
+
+            <div style="
+                position:absolute;
+                top:397px;
+                left:32%;
+                transform:translateX(-50%);
+                color:white;
+                font-size:65px;
+                font-weight:bold;
+            " id="score-left-1">0</div>
+
+            <div style="
+                position:absolute;
+                top:397px;
+                left:68%;
+                transform:translateX(-50%);
+                color:white;
+                font-size:65px;
+                font-weight:bold;
+            " id="score-right-1">0</div>
+
+            <div style="
+                position:absolute;
+                left:35px;
+                top:435px;
+                width:90px;
+                height:5px;
+                background:rgb(10,105,164);
+            "></div>
+
+            <div style="
+                position:absolute;
+                right:35px;
+                top:435px;
+                width:90px;
+                height:5px;
+                background:rgb(10,105,164);
+            "></div>
+        `;
+
+        container.appendChild(section);
+
+        updateAllGameData();
+        return;
+    }
+
+    // =========================
+    // MULTI GAME LAYOUT
+    // =========================
+
+    bof.style.display = "none";
+
+    for (let i = 1; i <= amount; i++) {
+
+        const section = document.createElement("div");
+        section.className = "game-section";
+
+        section.innerHTML = `
+            <div class="game-team left">
+
+                <div class="game-team-info">
+                    <div class="game-logo" id="logo-top-${i}"></div>
+                    <div class="game-tag" id="tag-top-${i}">[TOP]</div>
+                </div>
+
+                <div class="game-score" id="score-left-${i}">0</div>
+            </div>
+
+            <div class="game-vs">VS</div>
+
+            <div class="game-team right">
+
+                <div class="game-score" id="score-right-${i}">0</div>
+
+                <div class="game-team-info">
+                    <div class="game-logo" id="logo-bottom-${i}"></div>
+                    <div class="game-tag" id="tag-bottom-${i}">[BOT]</div>
+                </div>
+
+            </div>
+
+            <div class="game-label">GAME ${i}</div>
+
+            ${i < amount ? '<div class="game-separator"></div>' : ''}
+        `;
+
+        container.appendChild(section);
+    }
+
+    updateAllGameData();
+}
+
+function updateAllGameData(matches) {
+    for (let i = 1; i <= gameAmount; i++) {
+        const match = matches[`game${i}`] || {};
+
+        const topLogoEl = document.getElementById(`logo-top-${i}`);
+        const bottomLogoEl = document.getElementById(`logo-bottom-${i}`);
+        if (topLogoEl) topLogoEl.style.backgroundImage = match.left_logo ? `url(${match.left_logo})` : "";
+        if (bottomLogoEl) bottomLogoEl.style.backgroundImage = match.right_logo ? `url(${match.right_logo})` : "";
+
+        const topTag = document.getElementById(`tag-top-${i}`);
+        const bottomTag = document.getElementById(`tag-bottom-${i}`);
+        if (topTag) topTag.textContent = match.left_tri?.trim() || match.left_tag?.trim() || "[TOP]";
+        if (bottomTag) bottomTag.textContent = match.right_tri?.trim() || match.right_tag?.trim() || "[BOT]";
+
+        const leftScore = document.getElementById(`score-left-${i}`);
+        const rightScore = document.getElementById(`score-right-${i}`);
+        if (leftScore) leftScore.textContent = match.left_score ?? 0;
+        if (rightScore) rightScore.textContent = match.right_score ?? 0;
+    }
+}
+
+
+/* ===================== */
+/* TIMER LOGIC           */
+/* ===================== */
+let timerInterval = null;
+let timerData = { duration: 0, start_at: 0, running: false };
+let matchEnded = false;
+
+function clamp(sec) {
+    return Math.min(Math.max(0, Math.floor(sec)), 359999);
+}
+function formatHHMMSS(sec) {
+    sec = clamp(sec);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+}
+
+function renderTimer() {
+    const el = document.getElementById("timer-display");
+    if (!el) return;
+    if (matchEnded) { el.textContent = "Ended"; return; }
+    const duration = Number(timerData.duration) || 0;
+    let remaining = duration;
+    if (timerData.running && timerData.start_at > 0) {
+        // start_at is unix seconds from D1
+        const elapsed = Math.floor(Date.now() / 1000) - timerData.start_at;
+        remaining = duration - elapsed;
+    }
+    el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "Starting";
+}
+
+function startRenderLoop() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(renderTimer, 500);
+}
+
+/* ===================== */
+/* MAP LOGIC             */
+/* ===================== */
+let currentMapVideo = "";
+
+function applyMap(map, videoUrl) {
+    const mainBox = document.getElementById("main-box");
+    const mapVideo = document.getElementById("map-video");
+
+    if (!map || map === "none" || !videoUrl) {
+        mainBox.classList.remove("show");
+        setTimeout(() => { mapVideo.pause(); mapVideo.removeAttribute("src"); mapVideo.load(); }, 600);
+        return;
+    }
+
+    if (videoUrl === currentMapVideo) return; // no change
+    currentMapVideo = videoUrl;
+
+    mainBox.classList.remove("show");
+    mapVideo.pause();
+    mapVideo.src = videoUrl + "?t=" + Date.now();
+    mapVideo.load();
+
+    const onReady = () => {
+        mapVideo.removeEventListener("canplaythrough", onReady);
+        mapVideo.play().catch(() => {});
+        mainBox.classList.add("show");
+    };
+    mapVideo.addEventListener("canplaythrough", onReady);
+}
+
+/* ===================== */
+/* GRAPHICS ROTATION     */
+/* ===================== */
+let graphicsData = { enabled: false, images: [] };
+let graphicsIndex = 0;
+const graphicsOverlay = document.getElementById("graphics-overlay");
+const graphicsImage = document.getElementById("graphics-image");
+
+async function showGraphic(index) {
+    if (!graphicsData.images[index]) return;
+    graphicsImage.style.opacity = "0";
+    await new Promise(r => setTimeout(r, 500));
+    graphicsImage.src = graphicsData.images[index];
+    await new Promise(r => { graphicsImage.onload = r; graphicsImage.onerror = r; });
+    graphicsOverlay.style.opacity = "1";
+    graphicsImage.style.opacity = "1";
+    document.getElementById("main-box").classList.remove("show");
+}
+
+function hideGraphic(restoreMap = true) {
+    graphicsOverlay.style.opacity = "0";
+    if (restoreMap && currentMapVideo) {
+        document.getElementById("main-box").classList.add("show");
+    }
+}
+
+async function runGraphicsLoop() {
+    while (true) {
+        if (!graphicsData.enabled || !graphicsData.images.length) {
+            hideGraphic(true);
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+        }
+        await showGraphic(graphicsIndex);
+        await new Promise(r => setTimeout(r, 15000));
+        graphicsIndex++;
+        const cycleComplete = graphicsIndex >= graphicsData.images.length;
+        hideGraphic(cycleComplete);
+        await new Promise(r => setTimeout(r, 1000));
+        if (cycleComplete) {
+            graphicsIndex = 0;
+            await new Promise(r => setTimeout(r, 90000));
+        }
+    }
+}
+setTimeout(runGraphicsLoop, 3000);
+
+/* ===================== */
+/* SPONSOR ROTATION      */
+/* ===================== */
+let sponsorInterval = null;
+function startSponsorRotation() {
+    const imgs = document.querySelectorAll("#sponsor-box .sponsor-img");
+    if (!imgs.length) return;
+    let i = 0;
+    if (sponsorInterval) clearInterval(sponsorInterval);
+    sponsorInterval = setInterval(() => {
+        imgs[i].classList.remove("active");
+        i = (i + 1) % imgs.length;
+        imgs[i].classList.add("active");
+    }, 10000);
+}
+startSponsorRotation();
+
+/* ===================== */
+/* SPOTIFY               */
+/* ===================== */
+async function pollNowPlaying() {
+    const spotToken = localStorage.getItem("spotify_access_token");
+    const el = document.getElementById("scroll-text");
+    if (!spotToken) { el.textContent = ""; return; }
+    try {
+        const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+            headers: { Authorization: "Bearer " + spotToken }
+        });
+        if (!res.ok || res.status === 204) { el.textContent = ""; return; }
+        const data = await res.json();
+        if (!data.item) { el.textContent = ""; return; }
+        el.textContent = `${data.item.name} - ${data.item.artists.map(a => a.name).join(", ")}`;
+    } catch { el.textContent = ""; }
+}
+setInterval(pollNowPlaying, 3000);
+pollNowPlaying();
+
+/* ===================== */
+/* D1 POLL - main loop   */
+/* ===================== */
+function applyState(s) {
+    // Timer
+    matchEnded = !!s.timer_ended;
+    timerData.duration = s.timer_duration || 0;
+    timerData.start_at = s.timer_start_at || 0;
+    timerData.running  = !!s.timer_running;
+    renderTimer();
+    if (timerData.running) startRenderLoop();
+    else if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+    // Event text
+    const eventEl = document.getElementById("timer-event-text");
+    if (eventEl) eventEl.textContent = s.event_name || "";
+
+    // Map
+    applyMap(s.map, s.map_video);
+
+    // Matches
+    const matches = s.matches || {};
+    const amount = matches.games_displayed || matches.amount || 1;
+    if (amount !== gameAmount) {
+        gameAmount = amount;
+        createGameSections(gameAmount);
+    }
+    updateAllGameData(matches.matches || {});
+
+    // BOF label
+    const bofEl = document.getElementById("BOF");
+    if (bofEl) {
+        const num = (s.series_type || "").replace("BO", "");
+        bofEl.textContent = num ? `BEST OF ${num}` : "BEST OF";
+    }
+
+    // Graphics
+    const newImages = Array.isArray(s.graphics_images) ? s.graphics_images : [];
+    const changed = JSON.stringify(newImages) !== JSON.stringify(graphicsData.images);
+    graphicsData.enabled = !!s.graphics_enabled;
+    graphicsData.images  = newImages;
+    if (changed && graphicsIndex >= graphicsData.images.length) graphicsIndex = 0;
+    if (!graphicsData.enabled || !graphicsData.images.length) hideGraphic(!!currentMapVideo);
+}
+
+async function pollOverlay() {
+    try {
+        const res = await fetch(`/api/overlay/${accountId}`);
+        if (!res.ok) return;
+        const s = await res.json();
+        // Only re-apply if something changed
+        if (s.updated_at !== lastUpdatedAt) {
+            lastUpdatedAt = s.updated_at;
+            overlayState = s;
+            applyState(s);
+        }
+    } catch (e) {
+        console.warn("Poll failed:", e);
+    }
+}
+
+// Initial load then poll every 2s
+pollOverlay();
+setInterval(pollOverlay, 2000);
+
+</script>
+</body>
+</html>
