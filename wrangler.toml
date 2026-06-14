@@ -16,6 +16,3 @@ id = "f962df1a994345578ea956ac70fa64f3"
 
 [vars]
 ADMIN_SECRET = "K9#mX2$vQ7@nL4&wR8!pT3^jY6*hN5"
-
-[build]
-command = "npx wrangler deploy"
