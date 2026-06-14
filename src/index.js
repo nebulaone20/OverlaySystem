@@ -125,6 +125,10 @@ export default {
             return new Response(null, { status: 204, headers: CORS });
         }
 
+        if (pathname === "/favicon.ico") {
+            return new Response(null, { status: 204 });
+        }
+
         // ── Static assets (Workers Sites / __STATIC_CONTENT) ────────────────
         if (!pathname.startsWith("/api/")) {
             // Serve index.html for bare /
