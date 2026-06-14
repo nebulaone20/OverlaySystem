@@ -1,4 +1,4 @@
-# Overlay System — Setup Guide
+# Overlay System - Setup Guide
 
 ## File Structure
 ```
