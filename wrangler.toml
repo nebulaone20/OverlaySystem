@@ -8,11 +8,11 @@ bucket = "./public"
 [[d1_databases]]
 binding = "DB"
 database_name = "overlay-db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_id = "9ad1b17a-ebfc-4922-a1f6-ed2e3bd6267d"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "f962df1a994345578ea956ac70fa64f3"
 
 [vars]
-ADMIN_SECRET = "change-this-to-a-strong-secret"
+ADMIN_SECRET = "K9#mX2$vQ7@nL4&wR8!pT3^jY6*hN5"
