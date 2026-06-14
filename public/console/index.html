@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overlay Console</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0b0b0b; color: #fff; font-family: Arial, sans-serif; min-height: 100vh; }
+
+  header {
+    background: #111;
+    border-bottom: 1px solid #222;
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 16px; color: #fff; }
+  header .right { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #888; }
+  .logout-btn {
+    background: none;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+  .logout-btn:hover { border-color: #fff; color: #fff; }
+
+  .layout { display: flex; height: calc(100vh - 52px); }
+
+  /* Sidebar */
+  nav {
+    background: #111;
+    border-right: 1px solid #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    width: 180px;
+    flex-shrink: 0;
+  }
+  .area-btn {
+    background: none;
+    border: none;
+    border-left: 3px solid transparent;
+    color: #888;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 10px 20px;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .area-btn:hover { color: #fff; background: rgba(255,255,255,0.03); }
+  .area-btn.active { border-left-color: #0a69a4; color: #fff; background: rgba(10,105,164,0.08); }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 28px; }
+
+  section.panel { display: none; max-width: 700px; }
+  section.panel.active { display: block; }
+
+  h2 { font-size: 18px; margin-bottom: 20px; }
+  h3 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+
+  .card {
+    background: #161616;
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; }
+  input[type=text], input[type=number], input[type=password], select, textarea {
+    background: #1e1e1e;
+    border: 1px solid #2a2a2a;
+    border-radius: 7px;
+    color: #fff;
+    font-size: 13px;
+    padding: 8px 11px;
+    outline: none;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  input:focus, select:focus, textarea:focus { border-color: #0a69a4; }
+  input[type=checkbox] { width: auto; margin: 0 6px 0 0; }
+
+  .row { display: flex; gap: 10px; align-items: flex-start; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0; }
+
+  button.btn {
+    background: #0a69a4;
+    border: none;
+    border-radius: 7px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 18px;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+  button.btn:hover { background: #0883cc; }
+  button.btn.secondary { background: #2a2a2a; }
+  button.btn.secondary:hover { background: #333; }
+  button.btn.danger { background: #c0392b; }
+  button.btn.danger:hover { background: #e74c3c; }
+  button.btn.success { background: #27ae60; }
+  button.btn.success:hover { background: #2ecc71; }
+  button.btn.wide { width: 100%; margin-top: 4px; }
+
+  .timer-row { display: flex; gap: 8px; align-items: flex-end; }
+  .timer-row > div { flex: 1; }
+  .timer-btns { display: flex; gap: 8px; margin-top: 4px; }
+  .timer-btns button { flex: 1; }
+
+  .game-block {
+    border: 1px solid #222;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 14px;
+  }
+  .game-block h4 { font-size: 13px; color: #aaa; margin-bottom: 10px; }
+
+  .hidden { display: none !important; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 18px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; }
+  .toast.ok { border-color: rgba(40,180,80,0.4); color: #5dca7e; }
+  .toast.err { border-color: rgba(220,50,50,0.4); color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Overlay Console</h1>
+  <div class="right">
+    <span id="header-name"></span>
+    <a id="overlay-link" href="#" target="_blank" style="color:#0a69a4;font-size:12px;text-decoration:none;">View Overlay ↗</a>
+    <button class="logout-btn" id="logout-btn">Sign out</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav>
+    <button class="area-btn active" data-area="timer">Timer</button>
+    <button class="area-btn" data-area="map">Map</button>
+    <button class="area-btn" data-area="matches">Matches</button>
+    <button class="area-btn" data-area="graphics">Graphics</button>
+    <button class="area-btn" data-area="event">Event</button>
+    <button class="area-btn" data-area="timeout">Timeout</button>
+    <button class="area-btn" data-area="camera">Camera</button>
+    <button class="area-btn" data-area="spotify">Spotify</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- TIMER -->
+    <section class="panel active" id="panel-timer">
+      <h2>Timer</h2>
+      <div class="card">
+        <div class="timer-row">
+          <div><label>Hours</label><input type="number" id="timer-hours" min="0" max="23" value="0"></div>
+          <div><label>Minutes</label><input type="number" id="timer-mins" min="0" max="59" value="10"></div>
+          <div><label>Seconds</label><input type="number" id="timer-secs" min="0" max="59" value="0"></div>
+        </div>
+        <div class="timer-btns">
+          <button class="btn success" id="timer-start">▶ Start</button>
+          <button class="btn secondary" id="timer-stop">⏸ Stop</button>
+          <button class="btn danger" id="timer-reset">↺ Reset</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Match State</h3>
+        <div class="row">
+          <button class="btn" id="match-ended-toggle">Set Match Ended</button>
+          <button class="btn secondary" id="match-reset-toggle">Reset Match State</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAP -->
+    <section class="panel" id="panel-map">
+      <h2>Map</h2>
+      <div class="card">
+        <label>Select Map</label>
+        <select id="map-select">
+          <option value="none">— None —</option>
+          <option value="Abyss">Abyss</option>
+          <option value="Ascent">Ascent</option>
+          <option value="Bind">Bind</option>
+          <option value="Breeze">Breeze</option>
+          <option value="Fracture">Fracture</option>
+          <option value="Haven">Haven</option>
+          <option value="Icebox">Icebox</option>
+          <option value="Lotus">Lotus</option>
+          <option value="Pearl">Pearl</option>
+          <option value="Split">Split</option>
+          <option value="Sunset">Sunset</option>
+        </select>
+        <button class="btn wide" id="save-map">Save Map</button>
+      </div>
+    </section>
+
+    <!-- MATCHES -->
+    <section class="panel" id="panel-matches">
+      <h2>Matches</h2>
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Series Type</label>
+            <select id="series-type">
+              <option value="BO1">BO1</option>
+              <option value="BO3">BO3</option>
+              <option value="BO5">BO5</option>
+            </select>
+          </div>
+          <div>
+            <label>Games (total)</label>
+            <input type="number" id="game-amount" min="1" max="5" value="1">
+          </div>
+          <div>
+            <label>Games Displayed</label>
+            <input type="number" id="games-displayed" min="1" max="5" value="1">
+          </div>
+        </div>
+        <div id="score-groups"></div>
+        <button class="btn wide" id="save-tags">Save Matches</button>
+      </div>
+    </section>
+
+    <!-- GRAPHICS -->
+    <section class="panel" id="panel-graphics">
+      <h2>Graphics</h2>
+      <div class="card">
+        <label>
+          <input type="checkbox" id="graphics-enabled"> Enable Graphics Rotation
+        </label>
+        <div id="graphics-container" class="hidden" style="margin-top:12px;"></div>
+        <button class="btn wide" id="save-graphics" style="margin-top:8px;">Save Graphics</button>
+      </div>
+    </section>
+
+    <!-- EVENT -->
+    <section class="panel" id="panel-event">
+      <h2>Event Branding</h2>
+      <div class="card">
+        <label>Event Name (shown in timer bar)</label>
+        <input type="text" id="event-name-input" placeholder="Road 2 Invitationals - Group Stage - Day 1">
+        <button class="btn wide" id="save-event">Save Event Name</button>
+      </div>
+    </section>
+
+    <!-- TIMEOUT -->
+    <section class="panel" id="panel-timeout">
+      <h2>Timeout</h2>
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>Left Team Timeouts</label>
+            <input type="number" id="timeout-left" min="0" max="2" value="2">
+          </div>
+          <div>
+            <label>Right Team Timeouts</label>
+            <input type="number" id="timeout-right" min="0" max="2" value="2">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Active Side</label>
+            <select id="timeout-side">
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+          <div style="padding-top:20px;">
+            <label><input type="checkbox" id="timeout-visible"> Show Timeout Banner</label>
+          </div>
+        </div>
+        <button class="btn wide" id="save-timeout">Save Timeout</button>
+      </div>
+    </section>
+
+    <!-- CAMERA -->
+    <section class="panel" id="panel-camera">
+      <h2>Camera</h2>
+      <div class="card">
+        <label>Layout</label>
+        <select id="cam-layout">
+          <option value="duo">Duo</option>
+          <option value="solo">Solo</option>
+          <option value="none">None</option>
+        </select>
+        <div class="row">
+          <div>
+            <label>Solo Cam</label>
+            <select id="cam-solo">
+              <option value="none">— None —</option>
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="game-block" style="margin-top:12px;">
+          <h4>Left Camera</h4>
+          <div class="row">
+            <button class="btn secondary" id="gen-left">Generate VDO Link</button>
+          </div>
+          <label>View URL</label>
+          <input type="text" id="cam-left-url" placeholder="https://vdo.ninja/?view=...">
+          <div class="row">
+            <div><label>Gain</label><input type="number" id="cam-left-gain" min="0" max="3" step="0.1" value="1"></div>
+            <div><label>Compressor (dB)</label><input type="number" id="cam-left-comp" min="-60" max="0" value="-20"></div>
+            <div style="padding-top:20px;"><label><input type="checkbox" id="cam-left-mute"> Mute</label></div>
+          </div>
+        </div>
+
+        <div class="game-block">
+          <h4>Right Camera</h4>
+          <div class="row">
+            <button class="btn secondary" id="gen-right">Generate VDO Link</button>
+          </div>
+          <label>View URL</label>
+          <input type="text" id="cam-right-url" placeholder="https://vdo.ninja/?view=...">
+          <div class="row">
+            <div><label>Gain</label><input type="number" id="cam-right-gain" min="0" max="3" step="0.1" value="1"></div>
+            <div><label>Compressor (dB)</label><input type="number" id="cam-right-comp" min="-60" max="0" value="-20"></div>
+            <div style="padding-top:20px;"><label><input type="checkbox" id="cam-right-mute"> Mute</label></div>
+          </div>
+        </div>
+
+        <button class="btn wide" id="save-cam">Save Camera Config</button>
+      </div>
+    </section>
+
+    <!-- SPOTIFY -->
+    <section class="panel" id="panel-spotify">
+      <h2>Spotify</h2>
+      <div class="card">
+        <label><input type="checkbox" id="spotify-enabled"> Show Now Playing on overlay</label>
+        <button class="btn wide" id="save-spotify" style="margin-top:12px;">Save</button>
+        <hr style="border-color:#222;margin:16px 0;">
+        <div id="spotify-status" style="color:#888;font-size:13px;margin-bottom:10px;">Not connected</div>
+        <button class="btn" id="spotify-connect">Connect Spotify</button>
+        <button class="btn secondary hidden" id="spotify-disconnect">Disconnect</button>
+        <div id="spotify-user" class="hidden" style="margin-top:10px;font-size:13px;color:#aaa;">
+          Connected as <strong id="spotify-user-name"></strong>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const token = localStorage.getItem("overlay_token");
+const accountId = localStorage.getItem("overlay_account_id");
+if (!token || !accountId) window.location.href = "/login.html";
+
+document.getElementById("header-name").textContent =
+  localStorage.getItem("overlay_username") || "";
+document.getElementById("overlay-link").href =
+  `/overlay/index.html?id=${accountId}`;
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+  await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } });
+  localStorage.clear();
+  window.location.href = "/login.html";
+});
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const API = "";
+
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: "Bearer " + token };
+}
+
+function byid(id) { return document.getElementById(id); }
+
+let toastTimer;
+function toast(msg, type = "ok") {
+  const el = byid("toast");
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 3000);
+}
+
+// Current overlay state (loaded once, mutated as user saves)
+let state = {};
+
+async function loadState() {
+  const res = await fetch(`${API}/api/overlay/${accountId}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) { toast("Failed to load state", "err"); return; }
+  state = await res.json();
+  populateUI(state);
+}
+
+async function saveState(patch) {
+  const merged = { ...state, ...patch };
+  const res = await fetch(`${API}/api/overlay/${accountId}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(merged),
+  });
+  if (!res.ok) { toast("Save failed", "err"); return false; }
+  state = merged;
+  toast("Saved ✓");
+  return true;
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+document.querySelectorAll(".area-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".area-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll("section.panel").forEach(s => s.classList.remove("active"));
+    btn.classList.add("active");
+    byid("panel-" + btn.dataset.area)?.classList.add("active");
+  });
+});
+
+// ── Populate UI from state ────────────────────────────────────────────────────
+function populateUI(s) {
+  // Timer
+  const dur = s.timer_duration || 0;
+  byid("timer-hours").value = Math.floor(dur / 3600);
+  byid("timer-mins").value = Math.floor((dur % 3600) / 60);
+  byid("timer-secs").value = dur % 60;
+
+  // Map
+  byid("map-select").value = s.map || "none";
+
+  // Series / matches
+  const matches = s.matches || {};
+  const amount = matches.amount || 1;
+  byid("series-type").value = s.series_type || "BO1";
+  byid("game-amount").value = amount;
+  byid("games-displayed").value = matches.games_displayed || amount;
+  renderScoreInputs(amount, matches.matches || {});
+
+  // Graphics
+  byid("graphics-enabled").checked = !!s.graphics_enabled;
+  byid("graphics-container").classList.toggle("hidden", !s.graphics_enabled);
+  byid("graphics-container").innerHTML = "";
+  const imgs = s.graphics_images || [];
+  if (!imgs.length) createGraphicInput();
+  else { imgs.forEach(u => createGraphicInput(u)); createGraphicInput(); }
+
+  // Event name
+  byid("event-name-input").value = s.event_name || "";
+
+  // Timeout
+  const to = matches.timeout || {};
+  byid("timeout-left").value = to.left ?? 2;
+  byid("timeout-right").value = to.right ?? 2;
+  byid("timeout-visible").checked = !!to.visible;
+  byid("timeout-side").value = to.side || "left";
+
+  // Camera
+  const cam = matches.camera || {};
+  byid("cam-layout").value = cam.layout || "duo";
+  byid("cam-solo").value = cam.solo || "none";
+  byid("cam-left-url").value = cam.cams?.left?.url || "";
+  byid("cam-right-url").value = cam.cams?.right?.url || "";
+  byid("cam-left-gain").value = cam.cams?.left?.gain ?? 1;
+  byid("cam-right-gain").value = cam.cams?.right?.gain ?? 1;
+  byid("cam-left-comp").value = cam.cams?.left?.compressor ?? -20;
+  byid("cam-right-comp").value = cam.cams?.right?.compressor ?? -20;
+  byid("cam-left-mute").checked = cam.cams?.left?.mute ?? false;
+  byid("cam-right-mute").checked = cam.cams?.right?.mute ?? false;
+
+  // Spotify
+  byid("spotify-enabled").checked = !!s.spotify_enabled;
+}
+
+// ── Score Inputs ──────────────────────────────────────────────────────────────
+function renderScoreInputs(amount, matchData = {}) {
+  amount = Math.max(1, Math.min(5, amount));
+  const sg = byid("score-groups");
+  sg.innerHTML = "";
+  for (let i = 1; i <= amount; i++) {
+    const m = matchData[`game${i}`] || {};
+    const div = document.createElement("div");
+    div.className = "game-block";
+    div.innerHTML = `
+      <h4>Game ${i}</h4>
+      <div class="row">
+        <div><label>Left Tag</label><input id="game${i}_left_tri" type="text" placeholder="PRX" maxlength="4" value="${m.left_tri||""}"></div>
+        <div><label>Right Tag</label><input id="game${i}_right_tri" type="text" placeholder="LEV" maxlength="4" value="${m.right_tri||""}"></div>
+      </div>
+      <div class="row">
+        <div><label>Left Logo URL</label><input id="game${i}_left_logo" type="text" value="${m.left_logo||""}"></div>
+        <div><label>Right Logo URL</label><input id="game${i}_right_logo" type="text" value="${m.right_logo||""}"></div>
+      </div>
+      <div class="row">
+        <div><label>Left Score</label><input id="game${i}_left_score" type="number" min="0" max="99" value="${m.left_score??0}"></div>
+        <div><label>Right Score</label><input id="game${i}_right_score" type="number" min="0" max="99" value="${m.right_score??0}"></div>
+      </div>
+    `;
+    sg.appendChild(div);
+  }
+}
+
+byid("game-amount").addEventListener("change", () => {
+  renderScoreInputs(parseInt(byid("game-amount").value, 10));
+});
+
+// ── Graphics ──────────────────────────────────────────────────────────────────
+function createGraphicInput(value = "") {
+  const container = document.createElement("div");
+  container.style.marginBottom = "8px";
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "Image URL";
+  input.value = value;
+  input.addEventListener("input", () => {
+    const inputs = byid("graphics-container").querySelectorAll("input");
+    const last = inputs[inputs.length - 1];
+    if (last === input && input.value.trim()) createGraphicInput();
+  });
+  container.appendChild(input);
+  byid("graphics-container").appendChild(container);
+}
+
+byid("graphics-enabled").addEventListener("change", () => {
+  byid("graphics-container").classList.toggle("hidden", !byid("graphics-enabled").checked);
+});
+
+// ── Timer ─────────────────────────────────────────────────────────────────────
+byid("timer-start").addEventListener("click", async () => {
+  const h = parseInt(byid("timer-hours").value || "0", 10);
+  const m = parseInt(byid("timer-mins").value || "0", 10);
+  const s = parseInt(byid("timer-secs").value || "0", 10);
+  const dur = h * 3600 + m * 60 + s;
+  if (dur <= 0) { toast("Duration must be > 0", "err"); return; }
+  await fetch(`${API}/api/overlay/${accountId}/timer`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ duration: dur, start_at: Math.floor(Date.now() / 1000), running: true, ended: false }),
+  });
+  state.timer_duration = dur;
+  state.timer_running = true;
+  state.timer_ended = false;
+  state.timer_start_at = Math.floor(Date.now() / 1000);
+  toast("Timer started ✓");
+});
+
+byid("timer-stop").addEventListener("click", async () => {
+  const elapsed = state.timer_running
+    ? Math.floor(Date.now() / 1000) - state.timer_start_at
+    : 0;
+  const remaining = Math.max(0, state.timer_duration - elapsed);
+  await fetch(`${API}/api/overlay/${accountId}/timer`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ duration: remaining, start_at: 0, running: false }),
+  });
+  state.timer_duration = remaining;
+  state.timer_running = false;
+  toast("Timer stopped ✓");
+});
+
+byid("timer-reset").addEventListener("click", async () => {
+  await fetch(`${API}/api/overlay/${accountId}/timer`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify({ duration: 0, start_at: 0, running: false, ended: false }),
+  });
+  state.timer_duration = 0;
+  state.timer_running = false;
+  toast("Timer reset ✓");
+});
+
+// ── Match state ───────────────────────────────────────────────────────────────
+byid("match-ended-toggle").addEventListener("click", () =>
+  saveState({ timer_ended: true }));
+byid("match-reset-toggle").addEventListener("click", () =>
+  saveState({ timer_ended: false }));
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+byid("save-map").addEventListener("click", () => {
+  const map = byid("map-select").value;
+  const map_video = map !== "none"
+    ? `https://github.com/caleb-cb/community-caster-overlay-videos/blob/main/${map}_Cinematic.mp4?raw=true`
+    : "";
+  saveState({ map, map_video });
+});
+
+// ── Matches ───────────────────────────────────────────────────────────────────
+byid("save-tags").addEventListener("click", () => {
+  const amount = parseInt(byid("game-amount").value || "1", 10);
+  const games_displayed = parseInt(byid("games-displayed").value || amount, 10);
+  const matchData = {};
+  for (let i = 1; i <= amount; i++) {
+    matchData[`game${i}`] = {
+      left_tri: byid(`game${i}_left_tri`)?.value.trim().toUpperCase() || "",
+      right_tri: byid(`game${i}_right_tri`)?.value.trim().toUpperCase() || "",
+      left_logo: byid(`game${i}_left_logo`)?.value.trim() || "",
+      right_logo: byid(`game${i}_right_logo`)?.value.trim() || "",
+      left_score: parseInt(byid(`game${i}_left_score`)?.value || "0", 10),
+      right_score: parseInt(byid(`game${i}_right_score`)?.value || "0", 10),
+    };
+  }
+  const existing = state.matches || {};
+  saveState({
+    series_type: byid("series-type").value,
+    matches: { ...existing, amount, games_displayed, matches: matchData },
+  });
+});
+
+// ── Graphics ──────────────────────────────────────────────────────────────────
+byid("save-graphics").addEventListener("click", () => {
+  const enabled = byid("graphics-enabled").checked;
+  const graphics_images = [...byid("graphics-container").querySelectorAll("input")]
+    .map(i => i.value.trim()).filter(Boolean);
+  saveState({ graphics_enabled: enabled, graphics_images });
+});
+
+// ── Event ─────────────────────────────────────────────────────────────────────
+byid("save-event").addEventListener("click", () => {
+  saveState({ event_name: byid("event-name-input").value.trim() });
+});
+
+// ── Timeout ───────────────────────────────────────────────────────────────────
+byid("save-timeout").addEventListener("click", () => {
+  const existing = state.matches || {};
+  saveState({
+    matches: {
+      ...existing,
+      timeout: {
+        left: parseInt(byid("timeout-left").value, 10),
+        right: parseInt(byid("timeout-right").value, 10),
+        visible: byid("timeout-visible").checked,
+        side: byid("timeout-side").value,
+      },
+    },
+  });
+});
+
+// ── Camera ────────────────────────────────────────────────────────────────────
+function generateVdoLinks() {
+  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  return { push: `https://vdo.ninja/?push=${id}`, view: `https://vdo.ninja/?view=${id}` };
+}
+byid("gen-left").addEventListener("click", () => {
+  const l = generateVdoLinks();
+  byid("cam-left-url").value = l.view;
+  navigator.clipboard.writeText(l.push).catch(() => {});
+  toast("Push link copied to clipboard");
+});
+byid("gen-right").addEventListener("click", () => {
+  const l = generateVdoLinks();
+  byid("cam-right-url").value = l.view;
+  navigator.clipboard.writeText(l.push).catch(() => {});
+  toast("Push link copied to clipboard");
+});
+byid("save-cam").addEventListener("click", () => {
+  const existing = state.matches || {};
+  saveState({
+    matches: {
+      ...existing,
+      camera: {
+        layout: byid("cam-layout").value,
+        solo: byid("cam-solo").value,
+        cams: {
+          left: {
+            url: byid("cam-left-url").value,
+            gain: parseFloat(byid("cam-left-gain").value),
+            compressor: parseFloat(byid("cam-left-comp").value),
+            mute: byid("cam-left-mute").checked,
+          },
+          right: {
+            url: byid("cam-right-url").value,
+            gain: parseFloat(byid("cam-right-gain").value),
+            compressor: parseFloat(byid("cam-right-comp").value),
+            mute: byid("cam-right-mute").checked,
+          },
+        },
+      },
+    },
+  });
+});
+
+// ── Spotify ───────────────────────────────────────────────────────────────────
+byid("save-spotify").addEventListener("click", () => {
+  saveState({ spotify_enabled: byid("spotify-enabled").checked });
+});
+
+// Restore Spotify UI state from localStorage
+const spotToken = localStorage.getItem("spotify_access_token");
+const spotName = localStorage.getItem("spotify_user_display");
+if (spotToken) {
+  byid("spotify-status").textContent = "Spotify Connected ✅";
+  byid("spotify-connect").classList.add("hidden");
+  byid("spotify-disconnect").classList.remove("hidden");
+  if (spotName) {
+    byid("spotify-user-name").textContent = spotName;
+    byid("spotify-user").classList.remove("hidden");
+  }
+}
+byid("spotify-disconnect").addEventListener("click", () => {
+  ["spotify_access_token","spotify_refresh_token","spotify_user_display","pkce_verifier"]
+    .forEach(k => localStorage.removeItem(k));
+  byid("spotify-status").textContent = "Not connected";
+  byid("spotify-connect").classList.remove("hidden");
+  byid("spotify-disconnect").classList.add("hidden");
+  byid("spotify-user").classList.add("hidden");
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadState();
+</script>
+<script src="spotify.js"></script>
+</body>
+</html>
