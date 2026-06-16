@@ -567,7 +567,7 @@ function renderTimer() {
         const elapsed = Math.floor(Date.now() / 1000) - timerData.start_at;
         remaining = duration - elapsed;
     }
-    el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "Starting";
+    el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "00:00:00";
 }
 
 function startRenderLoop() {
