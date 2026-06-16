@@ -157,7 +157,7 @@ html, body {
     right: 20px;
     bottom: 0;
     height: 3px;
-    background: rgb(10,105,164);
+    background: var(--brand-color, rgb(10,105,164));
 }
 
 .game-team {
@@ -738,8 +738,8 @@ function applyState(s) {
     const preset = s.event_preset || "road2";
     const sponsorSets = {
         road2: [
+            "Road 2 OCE Invitationals logo.png",
             "Road 2 OCE Invitational.png",
-            "Road 2 OCE logo.png",
             "Road 2 OCE logo Single Invitational.png",
         ],
         waveoce: [
@@ -748,6 +748,14 @@ function applyState(s) {
             "Wave OCE Rising Tides Brandmark Logo_White.png",
         ],
     };
+    const brandColors = {
+        road2:   "rgb(120, 40, 180)",
+        waveoce: "rgb(10, 105, 164)",
+    };
+    document.documentElement.style.setProperty(
+        "--brand-color",
+        brandColors[preset] || brandColors.waveoce
+    );
     const imgs = sponsorSets[preset] || sponsorSets.road2;
     sponsorBox.innerHTML = "";
     imgs.forEach((src, i) => {
