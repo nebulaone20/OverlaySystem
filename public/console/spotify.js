@@ -69,7 +69,7 @@ async function handleRedirect() {
 
     const verifier = localStorage.getItem("pkce_verifier");
     if (!verifier) {
-        alert("Missing verifier — reconnect Spotify");
+        alert("Missing verifier - reconnect Spotify");
         return;
     }
 
@@ -112,7 +112,7 @@ async function handleRedirect() {
             location.reload();
         } else {
             console.error(data);
-            alert("Token exchange failed — check Spotify dashboard redirect URIs");
+            alert("Token exchange failed - check Spotify dashboard redirect URIs");
         }
     } catch (err) {
         console.error(err);
@@ -152,19 +152,19 @@ if (disconnectBtn) {
 /* =========================
    RESTORE UI ON LOAD
 ========================= */
-const token = localStorage.getItem("spotify_access_token");
-const displayName = localStorage.getItem("spotify_user_display");
+const spotifyStoredToken = localStorage.getItem("spotify_access_token");
+const spotifyDisplayName = localStorage.getItem("spotify_user_display");
 const connectBtn2 = document.getElementById("spotify-connect");
 const disconnectBtn2 = document.getElementById("spotify-disconnect");
 const userBox = document.getElementById("spotify-user");
 const userNameEl = document.getElementById("spotify-user-name");
 
-if (token) {
+if (spotifyStoredToken) {
     if (statusEl) statusEl.textContent = "Spotify Connected ✅";
     if (connectBtn2) connectBtn2.classList.add("hidden");
     if (disconnectBtn2) disconnectBtn2.classList.remove("hidden");
-    if (displayName && userBox && userNameEl) {
-        userNameEl.textContent = displayName;
+    if (spotifyDisplayName && userBox && userNameEl) {
+        userNameEl.textContent = spotifyDisplayName;
         userBox.classList.remove("hidden");
     }
 }
