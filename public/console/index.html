@@ -477,6 +477,7 @@ function populateUI(s) {
 
   // Event name
   byid("event-name-input").value = s.event_name || "";
+  byid("event-preset").value = s.event_preset || "road2";
 
   // Timeout
   const to = matches.timeout || {};
