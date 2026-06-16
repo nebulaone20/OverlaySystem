@@ -163,6 +163,7 @@
     <button class="area-btn active" data-area="timer">Timer</button>
     <button class="area-btn" data-area="map">Map</button>
     <button class="area-btn" data-area="matches">Matches</button>
+    <button class="area-btn" data-area="lineup">Lineup</button>
     <button class="area-btn" data-area="graphics">Graphics</button>
     <button class="area-btn" data-area="event">Event</button>
     <button class="area-btn" data-area="timeout">Timeout</button>
@@ -243,6 +244,26 @@
         </div>
         <div id="score-groups"></div>
         <button class="btn wide" id="save-tags">Save Matches</button>
+      </div>
+    </section>
+
+    <!-- LINEUP -->
+    <section class="panel" id="panel-lineup">
+      <h2>Team Lineup</h2>
+      <div class="card">
+        <label><input type="checkbox" id="lineup-visible"> Show Lineup</label>
+        <div class="row" style="margin-top:12px;">
+          <div>
+            <label>Team Tag</label>
+            <input type="text" id="lineup-tag" placeholder="PRX" maxlength="4">
+          </div>
+          <div>
+            <label>Team Logo URL</label>
+            <input type="text" id="lineup-logo" placeholder="https://...">
+          </div>
+        </div>
+        <div id="lineup-players-inputs"></div>
+        <button class="btn wide" id="save-lineup">Save Lineup</button>
       </div>
     </section>
 
@@ -501,6 +522,8 @@ function populateUI(s) {
 
   // Spotify
   byid("spotify-enabled").checked = !!s.spotify_enabled;
+
+  populateLineup(s);
 }
 
 // ── Score Inputs ──────────────────────────────────────────────────────────────
@@ -750,6 +773,57 @@ byid("spotify-disconnect").addEventListener("click", () => {
   byid("spotify-connect").classList.remove("hidden");
   byid("spotify-disconnect").classList.add("hidden");
   byid("spotify-user").classList.add("hidden");
+});
+
+// Build 5 player inputs
+const lineupPlayersEl = document.getElementById("lineup-players-inputs");
+for (let i = 1; i <= 5; i++) {
+    const div = document.createElement("div");
+    div.className = "game-block";
+    div.innerHTML = `
+        <h4>Player ${i}</h4>
+        <div class="row">
+            <div><label>IGN</label><input type="text" id="lineup-player-${i}-name" placeholder="D4V41"></div>
+            <div><label>Headshot URL</label><input type="text" id="lineup-player-${i}-photo" placeholder="https://..."></div>
+        </div>
+    `;
+    lineupPlayersEl.appendChild(div);
+}
+
+// Populate lineup from state
+function populateLineup(s) {
+    const lineup = s.matches?.lineup || {};
+    document.getElementById("lineup-visible").checked = !!lineup.visible;
+    document.getElementById("lineup-tag").value = lineup.tag || "";
+    document.getElementById("lineup-logo").value = lineup.logo || "";
+    const players = lineup.players || [];
+    for (let i = 1; i <= 5; i++) {
+        const p = players[i - 1] || {};
+        document.getElementById(`lineup-player-${i}-name`).value = p.name || "";
+        document.getElementById(`lineup-player-${i}-photo`).value = p.photo || "";
+    }
+}
+
+byid("save-lineup").addEventListener("click", () => {
+    const players = [];
+    for (let i = 1; i <= 5; i++) {
+        players.push({
+            name: byid(`lineup-player-${i}-name`).value.trim(),
+            photo: byid(`lineup-player-${i}-photo`).value.trim(),
+        });
+    }
+    const existing = state.matches || {};
+    saveState({
+        matches: {
+            ...existing,
+            lineup: {
+                visible: byid("lineup-visible").checked,
+                tag: byid("lineup-tag").value.trim().toUpperCase(),
+                logo: byid("lineup-logo").value.trim(),
+                players,
+            },
+        },
+    });
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
