@@ -35,14 +35,14 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    /* scale to fill grey box: 1076×605 */
-    transform: translateX(-120%) scale(0.5604, 0.5602);
+    /* 1076/1920 = 0.5604,  602/1080 = 0.5574 */
+    transform: translateX(-120%) scale(0.5604, 0.5574);
     transition: transform 0.6s ease;
     overflow: hidden;
     z-index: 20;
 }
 #main-box.show {
-    transform: translateX(0) scale(0.5604, 0.5602);
+    transform: translateX(0) scale(0.5604, 0.5574);
 }
 
 /* ── Graphics overlay (same zone as main-box) ── */
@@ -53,7 +53,7 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    transform: scale(0.5604, 0.5602);
+    transform: scale(0.5604, 0.5574);
     overflow: hidden;
     z-index: 20;
     opacity: 0;
