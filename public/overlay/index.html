@@ -732,6 +732,31 @@ function applyState(s) {
     graphicsData.images  = newImages;
     if (changed && graphicsIndex >= graphicsData.images.length) graphicsIndex = 0;
     if (!graphicsData.enabled || !graphicsData.images.length) hideGraphic(!!currentMapVideo);
+
+    // Sponsors — swap based on preset
+    const sponsorBox = document.getElementById("sponsor-box");
+    const preset = s.event_preset || "road2";
+    const sponsorSets = {
+        road2: [
+            "Road_2_OCE_Invitational.png",
+            "Road_2_OCE_logo.png",
+            "Road_2_OCE_logo_Single_Invitational.png",
+        ],
+        waveoce: [
+            "Rising_Tide_White.png",
+            "Wave OCE Logo_white.png",
+            "Wave OCE Rising Tides Brandmark Logo_White.png",
+        ],
+    };
+    const imgs = sponsorSets[preset] || sponsorSets.road2;
+    sponsorBox.innerHTML = "";
+    imgs.forEach((src, i) => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.className = "sponsor-img" + (i === 0 ? " active" : "");
+        sponsorBox.appendChild(img);
+    });
+    startSponsorRotation();
 }
 
 async function pollOverlay() {
