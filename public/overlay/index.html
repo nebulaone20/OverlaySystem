@@ -269,6 +269,93 @@ html, body {
     animation: scroll 12s linear infinite;
 }
 
+#lineup-box {
+    position: absolute;
+    bottom: 62px;
+    left: 70px;
+    width: 1779px;
+    height: 144px;
+    display: flex;
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+#lineup-box.show { opacity: 1; }
+
+#lineup-team {
+    width: 245px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    flex-shrink: 0;
+}
+
+#lineup-logo {
+    width: 80px;
+    height: 80px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    flex-shrink: 0;
+}
+
+#lineup-team-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#lineup-tag {
+    color: #fff;
+    font-family: "Jefferies", Arial, sans-serif;
+    font-size: 28px;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+#lineup-label {
+    color: #aaa;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+#lineup-players {
+    display: flex;
+    flex: 1;
+}
+
+.lineup-player {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    padding-bottom: 10px;
+    overflow: hidden;
+}
+
+.lineup-player-photo {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+    object-position: top;
+}
+
+.lineup-player-name {
+    color: #fff;
+    font-family: "Jefferies", Arial, sans-serif;
+    font-size: 20px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin-top: 4px;
+    text-align: center;
+}
+
 @keyframes scroll { 0% { left: 100%; } 100% { left: -100%; } }
 
 @font-face {
@@ -325,11 +412,23 @@ html, body {
     <div id="BOF">BEST OF</div>
 </div>
 
-<!-- Music / now playing -->
+<!-- Music ticker (sits over cell 1 when no lineup) -->
 <div id="music-box">
     <div id="scroll-container">
         <div id="scroll-text"></div>
     </div>
+</div>
+
+<!-- Team lineup strip -->
+<div id="lineup-box">
+    <div id="lineup-team">
+        <div id="lineup-logo"></div>
+        <div id="lineup-team-info">
+            <div id="lineup-tag"></div>
+            <div id="lineup-label">TEAM LINEUP</div>
+        </div>
+    </div>
+    <div id="lineup-players"></div>
 </div>
 
 <script>
@@ -772,6 +871,29 @@ function applyState(s) {
 
     if (s.spotify_token) {
         localStorage.setItem("spotify_access_token", s.spotify_token);
+    }
+
+    // Lineup
+    const lineup = s.matches?.lineup || {};
+    const lineupBox = document.getElementById("lineup-box");
+    const players = lineup.players || [];
+
+    if (lineup.visible && players.length) {
+        document.getElementById("lineup-logo").style.backgroundImage =
+            lineup.logo ? `url(${lineup.logo})` : "none";
+        document.getElementById("lineup-tag").textContent = lineup.tag || "";
+
+        const playersEl = document.getElementById("lineup-players");
+        playersEl.innerHTML = players.map(p => `
+            <div class="lineup-player">
+                ${p.photo ? `<img class="lineup-player-photo" src="${p.photo}" alt="${p.name}">` : ""}
+                <div class="lineup-player-name">${p.name || ""}</div>
+            </div>
+        `).join("");
+
+        lineupBox.classList.add("show");
+    } else {
+        lineupBox.classList.remove("show");
     }
 }
 
