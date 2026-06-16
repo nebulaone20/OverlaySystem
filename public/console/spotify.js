@@ -69,7 +69,7 @@ async function handleRedirect() {
 
     const verifier = localStorage.getItem("pkce_verifier");
     if (!verifier) {
-        alert("Missing verifier — reconnect Spotify");
+        alert("Missing verifier - reconnect Spotify");
         return;
     }
 
