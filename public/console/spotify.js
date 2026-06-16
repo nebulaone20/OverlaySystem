@@ -69,7 +69,7 @@ async function handleRedirect() {
 
     const verifier = localStorage.getItem("pkce_verifier");
     if (!verifier) {
-        alert("Missing verifier - reconnect Spotify");
+        alert("Missing verifier — reconnect Spotify");
         return;
     }
 
@@ -93,6 +93,20 @@ async function handleRedirect() {
         if (data.access_token) {
             localStorage.setItem("spotify_access_token", data.access_token);
 
+            // Save token to D1 so OBS can access it
+            const accountId = localStorage.getItem("overlay_account_id");
+            const overlayToken = localStorage.getItem("overlay_token");
+            if (accountId && overlayToken) {
+                fetch(`/api/overlay/${accountId}/spotify-token`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "Bearer " + overlayToken,
+                    },
+                    body: JSON.stringify({ token: data.access_token }),
+                }).catch(console.error);
+            }
+
             try {
                 const meRes = await fetch("https://api.spotify.com/v1/me", {
                     headers: { Authorization: "Bearer " + data.access_token }
@@ -112,7 +126,7 @@ async function handleRedirect() {
             location.reload();
         } else {
             console.error(data);
-            alert("Token exchange failed - check Spotify dashboard redirect URIs");
+            alert("Token exchange failed — check Spotify dashboard redirect URIs");
         }
     } catch (err) {
         console.error(err);
@@ -146,6 +160,19 @@ if (disconnectBtn) {
         if (connectBtn) connectBtn.classList.remove("hidden");
 
         if (disconnectBtn) disconnectBtn.classList.add("hidden");
+
+        const accountId = localStorage.getItem("overlay_account_id");
+        const overlayToken = localStorage.getItem("overlay_token");
+        if (accountId && overlayToken) {
+            fetch(`/api/overlay/${accountId}/spotify-token`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: "Bearer " + overlayToken,
+                },
+                body: JSON.stringify({ token: "" }),
+            }).catch(console.error);
+        }
     };
 }
 
