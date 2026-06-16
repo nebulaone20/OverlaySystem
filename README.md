@@ -1,110 +1,108 @@
-# Overlay System - Setup Guide
+# Overlay System - User Guide
 
-## File Structure
-```
-overlay-system/
-├── src/index.js          ← Cloudflare Worker (all API routes + static serving)
-├── public/
-│   ├── login.html        ← Login page (everyone lands here)
-│   ├── admin.html        ← Admin panel (create/delete accounts)
-│   ├── console/
-│   │   ├── index.html    ← Overlay control console
-│   │   └── spotify.js    ← Spotify PKCE auth (copy from your existing file)
-│   └── overlay/
-│       └── index.html    ← The actual OBS overlay (add ?id=ACCOUNT_ID)
-├── schema.sql            ← D1 database schema
-├── setup.js              ← Run once to create admin account
-├── wrangler.toml         ← Cloudflare config
-└── package.json
-```
+## URLs
+
+| Page | URL |
+|------|-----|
+| Login | https://overlaysystem.road2.workers.dev/login.html |
+| Admin Panel | https://overlaysystem.road2.workers.dev/admin.html |
+| Console | https://overlaysystem.road2.workers.dev/console/index.html |
+| Overlay | https://overlaysystem.road2.workers.dev/overlay/index.html?id=ACCOUNT_ID |
 
 ---
 
-## 1. Install Wrangler
-```bash
-npm install
+## Logging In
+
+1. Go to `https://overlaysystem.road2.workers.dev/`
+2. Enter your username and password
+3. Admins are sent to the **Admin Panel**, operators are sent to the **Console**
+
+---
+
+## Admin Panel
+
+Only you have access to this. From here you can:
+
+- **Create accounts** - enter a display name, username, and password then click Create Account
+- **Reset passwords** - click Reset PW next to any account
+- **Delete accounts** - click Delete next to any account (cannot delete admin)
+- **Copy overlay URLs** - click the overlay URL next to any account to copy it to your clipboard
+
+Each account gets a unique overlay URL in the format:
 ```
-
----
-
-## 2. Create D1 Database
-```bash
-wrangler d1 create overlay-db
+https://overlaysystem.road2.workers.dev/overlay/index.html?id=ACCOUNT_ID
 ```
-Copy the `database_id` from the output and paste it into `wrangler.toml`.
+Give this URL to the OBS operator for that event.
 
 ---
 
-## 3. Create KV Namespace (for sessions)
-```bash
-wrangler kv:namespace create SESSIONS
-```
-Copy the `id` from the output and paste it into `wrangler.toml`.
+## Console
+
+This is where you control the overlay. Each section is in the left sidebar.
+
+### Timer
+- Set the hours, minutes, and seconds then click **▶ Start**
+- **⏸ Stop** pauses the timer at its current value
+- **↺ Reset** sets the timer back to zero
+- **Set Match Ended** displays "Ended" on the overlay
+- **Reset Match State** clears the ended state
+
+### Map
+- Select the map from the dropdown and click **Save Map**
+- The overlay will automatically load and display the map cinematic video
+- Select **None** to hide the video
+
+### Matches
+- Set the **Series Type** (BO1, BO3, BO5)
+- Set **Games** to the total number of games in the series
+- Set **Games Displayed** to how many appear on the overlay
+- Fill in team tags, logo URLs, and scores for each game
+- Click **Save Matches**
+
+### Graphics
+- Check **Enable Graphics Rotation** to turn it on
+- Paste image URLs (one per line) - these rotate every 15 seconds
+- After a full cycle the map video resumes for 90 seconds before rotating again
+- Click **Save Graphics**
+
+### Event
+- Type the event name shown in the timer bar (e.g. `Road 2 Invitationals - Group Stage - Day 1`)
+- Click **Save Event Name**
+
+### Timeout
+- Set remaining timeouts for each team
+- Select which side called the timeout
+- Check **Show Timeout Banner** to display it on the overlay
+- Click **Save Timeout**
+
+### Camera
+- Set the camera layout (Duo, Solo, None)
+- Click **Generate VDO Link** to create a VDO.Ninja push link - it copies to your clipboard automatically, send it to the player
+- Paste the view URL into the URL field
+- Adjust gain and compressor levels per camera
+- Click **Save Camera Config**
+
+### Spotify
+- Check **Show Now Playing** to display the current song on the overlay
+- Click **Connect Spotify** to authenticate
+- Click **Disconnect** to remove the connection
 
 ---
 
-## 4. Run Schema
-```bash
-npm run db:init:remote
-```
+## OBS Setup
+
+1. Add a **Browser Source**
+2. Set the URL to your overlay URL:
+   ```
+   https://overlaysystem.road2.workers.dev/overlay/index.html?id=ACCOUNT_ID
+   ```
+3. Set width to **1920** and height to **1080**
+4. Check **Refresh browser when scene becomes active**
 
 ---
 
-## 5. Create Admin Account
-```bash
-node setup.js
-# Then run the printed wrangler command, e.g.:
-wrangler d1 execute overlay-db --remote --file=admin-seed.sql
-```
+## Notes
 
----
-
-## 6. Copy Your Assets
-Copy these files into `public/overlay/` (same folder as overlay index.html):
-- `Intermission26Frame.png`
-- `jefferies.otf`
-- `jefferies bold.otf`
-- All sponsor/logo PNG files
-
-Copy into `public/console/`:
-- `spotify.js`
-
----
-
-## 7. Deploy
-```bash
-npm run deploy
-```
-
----
-
-## 8. Usage
-
-| URL | Who uses it |
-|-----|-------------|
-| `https://your-worker.workers.dev/` | Redirects to login |
-| `https://your-worker.workers.dev/login.html` | Login page |
-| `https://your-worker.workers.dev/admin.html` | You (admin only) |
-| `https://your-worker.workers.dev/console/index.html` | Each operator after login |
-| `https://your-worker.workers.dev/overlay/index.html?id=ACCOUNT_ID` | OBS browser source |
-
----
-
-## 9. OBS Setup
-Add a **Browser Source** with URL:
-```
-https://your-worker.workers.dev/overlay/index.html?id=ACCOUNT_ID
-```
-Width: `1920`, Height: `1080`
-
-Each account gets its own URL. Changes made in one console only affect that account's overlay.
-
----
-
-## How accounts work
-1. You log in as admin → go to `/admin.html`
-2. Create a new account (e.g. username: `waveoce`, display: `Wave OCE`)
-3. The account gets a unique ID (e.g. `a3f9b2c1`)
-4. Share login credentials with the operator
-5. Their overlay URL is `...?id=a3f9b2c1`
-6. Their console changes ONLY affect their overlay
+- The overlay polls for updates every **2 seconds** - there may be a short delay between saving in the console and the change appearing on stream
+- Each account is fully isolated - changes made in one console do not affect any other overlay
+- Spotify tokens are stored locally in your browser - if you clear browser data you will need to reconnect
