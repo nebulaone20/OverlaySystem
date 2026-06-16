@@ -131,31 +131,7 @@ export default {
 
         // ── Static assets (Workers Sites / __STATIC_CONTENT) ────────────────
         if (!pathname.startsWith("/api/")) {
-            const pages = {
-                "/": "login.html",
-                "/login.html": "login.html",
-                "/admin.html": "admin.html",
-                "/console/index.html": "console/index.html",
-                "/overlay/index.html": "overlay/index.html",
-                "/console/spotify.js": "console/spotify.js",
-            };
-
-            const page = pages[pathname];
-            if (!page) return new Response("Not found", { status: 404 });
-
-            const asset = await env.__STATIC_CONTENT.get(page, { type: "text" });
-            if (!asset) return new Response("Not found", { status: 404 });
-
-            const ext = page.split(".").pop();
-            const types = {
-                html: "text/html",
-                js: "application/javascript",
-                css: "text/css",
-            };
-
-            return new Response(asset, {
-                headers: { "Content-Type": types[ext] || "text/plain" }
-            });
+            return env.ASSETS.fetch(request);
         }
 
         // ── POST /api/login ──────────────────────────────────────────────────
