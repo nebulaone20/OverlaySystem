@@ -131,6 +131,9 @@ export default {
 
         // ── Static assets (Workers Sites / __STATIC_CONTENT) ────────────────
         if (!pathname.startsWith("/api/")) {
+            if (pathname === "/") {
+                return Response.redirect(new URL("/login.html", request.url).toString(), 302);
+            }
             return env.ASSETS.fetch(request);
         }
 
