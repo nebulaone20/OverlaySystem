@@ -1,5 +1,5 @@
 const CLIENT_ID = "36304abf3c674b89ba2489ab3e554e0b";
-const REDIRECT_URI = "https://nebulaone20.github.io/Nebulas-Valorant-Overlay/console/";
+const REDIRECT_URI = "https://overlaysystem.road2.workers.dev/console/index.html";
 const SCOPES = "user-read-playback-state user-read-currently-playing";
 
 const loginBtn = document.getElementById("spotify-connect");
@@ -52,7 +52,7 @@ if (loginBtn) {
 }
 
 /* =========================
-   HANDLE REDIRECT (IMPORTANT)
+   HANDLE REDIRECT
 ========================= */
 async function handleRedirect() {
     const params = new URLSearchParams(window.location.search);
@@ -69,7 +69,7 @@ async function handleRedirect() {
 
     const verifier = localStorage.getItem("pkce_verifier");
     if (!verifier) {
-        alert("Missing verifier - reconnect Spotify");
+        alert("Missing verifier — reconnect Spotify");
         return;
     }
 
@@ -84,9 +84,7 @@ async function handleRedirect() {
     try {
         const res = await fetch("https://accounts.spotify.com/api/token", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: body,
         });
 
@@ -95,16 +93,11 @@ async function handleRedirect() {
         if (data.access_token) {
             localStorage.setItem("spotify_access_token", data.access_token);
 
-            // ✅ GET USER DISPLAY NAME (THIS FIXES YOUR BUTTON)
             try {
                 const meRes = await fetch("https://api.spotify.com/v1/me", {
-                    headers: {
-                        Authorization: "Bearer " + data.access_token
-                    }
+                    headers: { Authorization: "Bearer " + data.access_token }
                 });
-
                 const me = await meRes.json();
-
                 if (me.display_name) {
                     localStorage.setItem("spotify_user_display", me.display_name);
                 }
@@ -114,14 +107,12 @@ async function handleRedirect() {
 
             if (statusEl) statusEl.textContent = "Spotify Connected ✅";
 
-            // clean URL
-            window.history.replaceState({}, document.title, REDIRECT_URI);
-
-            // ✅ OPTIONAL (but recommended)
+            // Clean URL then reload
+            window.history.replaceState({}, document.title, "/console/index.html");
             location.reload();
         } else {
             console.error(data);
-            alert("Token exchange failed");
+            alert("Token exchange failed — check Spotify dashboard redirect URIs");
         }
     } catch (err) {
         console.error(err);
@@ -133,11 +124,6 @@ async function handleRedirect() {
    INIT
 ========================= */
 handleRedirect();
-
-const savedToken = localStorage.getItem("spotify_access_token");
-if (savedToken && statusEl) {
-    statusEl.textContent = "Spotify Connected";
-}
 
 /* =========================
    DISCONNECT
@@ -153,16 +139,13 @@ if (disconnectBtn) {
 
         if (statusEl) statusEl.textContent = "Not connected";
 
-        // reset UI
         const userBox = document.getElementById("spotify-user");
         if (userBox) userBox.classList.add("hidden");
 
         const connectBtn = document.getElementById("spotify-connect");
-        if (connectBtn) connectBtn.style.display = "";
+        if (connectBtn) connectBtn.classList.remove("hidden");
 
-        disconnectBtn.style.display = "none";
-
-        console.log("Spotify disconnected");
+        if (disconnectBtn) disconnectBtn.classList.add("hidden");
     };
 }
 
@@ -178,8 +161,8 @@ const userNameEl = document.getElementById("spotify-user-name");
 
 if (token) {
     if (statusEl) statusEl.textContent = "Spotify Connected ✅";
-    if (connectBtn2) connectBtn2.style.display = "none";
-    if (disconnectBtn2) disconnectBtn2.style.display = "";
+    if (connectBtn2) connectBtn2.classList.add("hidden");
+    if (disconnectBtn2) disconnectBtn2.classList.remove("hidden");
     if (displayName && userBox && userNameEl) {
         userNameEl.textContent = displayName;
         userBox.classList.remove("hidden");
