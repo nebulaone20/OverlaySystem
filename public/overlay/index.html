@@ -765,6 +765,14 @@ function applyState(s) {
         sponsorBox.appendChild(img);
     });
     startSponsorRotation();
+
+    //spotify
+    const musicBox = document.getElementById("music-box");
+    if (musicBox) musicBox.style.display = s.spotify_enabled ? "" : "none";
+
+    if (s.spotify_token) {
+        localStorage.setItem("spotify_access_token", s.spotify_token);
+    }
 }
 
 async function pollOverlay() {
