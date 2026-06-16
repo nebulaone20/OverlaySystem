@@ -356,6 +356,20 @@ export default {
             return json({ ok: true });
         }
 
+        // PUT /api/overlay/:accountId/spotify-token
+        const spotifyTokenMatch = pathname.match(/^\/api\/overlay\/([^/]+)\/spotify-token$/);
+        if (spotifyTokenMatch && method === "PUT") {
+            const accountId = spotifyTokenMatch[1];
+            const session = await requireAuth(env, request);
+            if (!session) return err("Unauthorised", 401);
+            if (session.accountId !== accountId && !session.isAdmin) return err("Forbidden", 403);
+            const { token } = await request.json();
+            await env.DB.prepare(
+                "UPDATE overlay_data SET spotify_token = ?, updated_at = ? WHERE account_id = ?"
+            ).bind(token || "", Math.floor(Date.now() / 1000), accountId).run();
+            return json({ ok: true });
+        }
+
         return err("Not found", 404);
     },
 };
