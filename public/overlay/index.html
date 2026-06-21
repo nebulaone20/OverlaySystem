@@ -14,6 +14,7 @@ html, body {
     overflow: hidden;
     font-family: Arial;
     position: relative;
+    background: #000;
 }
 
 /* ── Frame graphic sits above video, below all UI ── */
@@ -35,14 +36,14 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    /* 1076/1920 = 0.5604,  602/1080 = 0.5574 */
-    transform: translateX(-120%) scale(0.5604, 0.5574);
+    /* scale to fill grey box: 1076×605 */
+    transform: translateX(-120%) scale(0.5604, 0.5602);
     transition: transform 0.6s ease;
     overflow: hidden;
-    z-index: 20;
+    z-index: 5;
 }
 #main-box.show {
-    transform: translateX(0) scale(0.5604, 0.5574);
+    transform: translateX(0) scale(0.5604, 0.5602);
 }
 
 /* ── Graphics overlay (same zone as main-box) ── */
@@ -53,20 +54,20 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    transform: scale(0.5604, 0.5574);
+    transform: scale(0.5604, 0.5602);
     overflow: hidden;
-    z-index: 20;
+    z-index: 15;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.8s ease;
 }
 
-/* ── Timer - top-left of top bar ── */
+/* ── Timer — top-left of top bar ── */
 #timer-box {
     position: absolute;
     top: 62px;
     left: 70px;
-    width: 1200px;
+    width: 660px;
     height: 191px;
     overflow: hidden;
     z-index: 20;
@@ -75,31 +76,31 @@ html, body {
 #timer-display {
     position: absolute;
     left: 30px;
-    top: -6px;
+    top: 20px;
     color: #ffffff;
-    font-family: "Jefferies", Arial, sans-serif;
-    font-weight: 500;
-    font-size: 120px;
-    letter-spacing: 5px;
+    font-family: "Segoe UI", Arial, sans-serif;
+    font-weight: 700;
+    font-size: 90px;
+    letter-spacing: 7px;
     pointer-events: none;
 }
 
 #timer-event-text {
     position: absolute;
     left: 30px;
-    bottom: 30px;
+    bottom: 20px;
     color: #ffffff;
     font-family: "Segoe UI", Arial, sans-serif;
     font-weight: 700;
-    font-size: 42px;
-    letter-spacing: 0px;
+    font-size: 22px;
+    letter-spacing: 2px;
     pointer-events: none;
 }
 
-/* ── Sponsor - top-right of top bar ── */
+/* ── Sponsor — top-right of top bar ── */
 #sponsor-box {
     position: absolute;
-    top: 48px;
+    top: 62px;
     right: 70px;
     width: 500px;
     height: 191px;
@@ -122,7 +123,7 @@ html, body {
 /* Keep .show class no-op so JS doesn't break */
 #sponsor-box.show { right: 70px; }
 
-/* ── Match box - right panel ── */
+/* ── Match box — right panel ── */
 #match-box {
     position: absolute;
     top: 254px;
@@ -157,7 +158,7 @@ html, body {
     right: 20px;
     bottom: 0;
     height: 3px;
-    background: var(--brand-color, rgb(10,105,164));
+    background: rgb(10,105,164);
 }
 
 .game-team {
@@ -239,12 +240,13 @@ html, body {
     z-index: 21;
 }
 
+/* ── Music / now playing — bottom strip (first cell) ── */
 #music-box {
     position: absolute;
-    top: 888px;
-    left: 70px;
-    width: 1780px;
-    height: 130px;
+    bottom: 68px;
+    left: 100px;
+    width: 230px;
+    height: 112px;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -263,30 +265,18 @@ html, body {
 #scroll-text {
     position: absolute;
     white-space: nowrap;
-    font-size: 28px;
+    font-size: 13px;
     color: white;
     animation: scroll 12s linear infinite;
 }
 
 @keyframes scroll { 0% { left: 100%; } 100% { left: -100%; } }
-
-@font-face {
-    font-family: "Jefferies";
-    src: url("jefferies.otf") format("opentype");
-    font-weight: normal;
-}
-
-@font-face {
-    font-family: "Jefferies";
-    src: url("jefferies bold.otf") format("opentype");
-    font-weight: bold;
-}
 </style>
 </head>
 
 <body>
 
-<!-- Frame graphic - sits above video, below UI text -->
+<!-- Frame graphic — sits above video, below UI text -->
 <img id="frame-img" src="Intermission26Frame.png" alt="">
 
 <!-- Map video box -->
@@ -307,8 +297,8 @@ html, body {
 
 <!-- Timer -->
 <div id="timer-box">
-    <div id="timer-display">00:00:00</div>
-    <div id="timer-event-text">Event</div>
+    <div id="timer-display">Starting</div>
+    <div id="timer-event-text">WaveOCE Rising Tides</div>
 </div>
 
 <!-- Sponsor logos -->
@@ -324,21 +314,29 @@ html, body {
     <div id="BOF">BEST OF</div>
 </div>
 
+<!-- Music / now playing -->
 <div id="music-box">
     <div id="scroll-container">
         <div id="scroll-text"></div>
     </div>
 </div>
 
-<script>
-// ── D1 Polling - replaces Firebase ──────────────────────────────────────────
-// Account ID comes from ?id= URL param
-const accountId = new URLSearchParams(location.search).get("id");
-if (!accountId) document.body.innerHTML = "<p style='color:red;padding:40px;font-size:24px;'>Missing ?id= in URL</p>";
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-const API = ""; // same origin via Cloudflare Worker
-let lastUpdatedAt = 0;
-let overlayState = {};
+<script>
+
+const firebaseConfig = {
+    apiKey: "AIzaSyCZaiLNBoOtcPPaCupRXAttm0KlV8xuMUw",
+    authDomain: "nebulas-overlay.firebaseapp.com",
+    databaseURL: "https://nebulas-overlay-default-rtdb.firebaseio.com",
+    projectId: "nebulas-overlay",
+    storageBucket: "nebulas-overlay.firebasestorage.app",
+    messagingSenderId: "369414654740",
+    appId: "1:369414654740:web:808bff413fd75084b15001"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 /* ===================== */
 /* DYNAMIC GAME SECTIONS */
@@ -348,7 +346,7 @@ let gameAmount = 1;
 
 function createGameSections(amount) {
 
-    amount = Math.max(1, Math.min(5, amount));
+    amount = Math.max(1, Math.min(4, amount));
 
     gameAmount = amount;
 
@@ -513,27 +511,47 @@ function createGameSections(amount) {
     updateAllGameData();
 }
 
-function updateAllGameData(matches) {
-    for (let i = 1; i <= gameAmount; i++) {
-        const match = matches[`game${i}`] || {};
+function updateAllGameData() {
+    db.ref("intermission/matches/matches").once("value").then(snap => {
+        const matches = snap.val() || {};
 
-        const topLogoEl = document.getElementById(`logo-top-${i}`);
-        const bottomLogoEl = document.getElementById(`logo-bottom-${i}`);
-        if (topLogoEl) topLogoEl.style.backgroundImage = match.left_logo ? `url(${match.left_logo})` : "";
-        if (bottomLogoEl) bottomLogoEl.style.backgroundImage = match.right_logo ? `url(${match.right_logo})` : "";
+        for (let i = 1; i <= gameAmount; i++) {
+            const match = matches[`game${i}`] || {};
 
-        const topTag = document.getElementById(`tag-top-${i}`);
-        const bottomTag = document.getElementById(`tag-bottom-${i}`);
-        if (topTag) topTag.textContent = match.left_tri?.trim() || match.left_tag?.trim() || "[TOP]";
-        if (bottomTag) bottomTag.textContent = match.right_tri?.trim() || match.right_tag?.trim() || "[BOT]";
+            const topLogoEl = document.getElementById(`logo-top-${i}`);
+            const bottomLogoEl = document.getElementById(`logo-bottom-${i}`);
+            if (topLogoEl) topLogoEl.style.backgroundImage = match.left_logo ? `url(${match.left_logo})` : "";
+            if (bottomLogoEl) bottomLogoEl.style.backgroundImage = match.right_logo ? `url(${match.right_logo})` : "";
 
-        const leftScore = document.getElementById(`score-left-${i}`);
-        const rightScore = document.getElementById(`score-right-${i}`);
-        if (leftScore) leftScore.textContent = match.left_score ?? 0;
-        if (rightScore) rightScore.textContent = match.right_score ?? 0;
-    }
+            const topTag = document.getElementById(`tag-top-${i}`);
+            const bottomTag = document.getElementById(`tag-bottom-${i}`);
+            if (topTag) topTag.textContent = match.left_tri?.trim() || match.left_tag?.trim() || "[TOP]";
+            if (bottomTag) bottomTag.textContent = match.right_tri?.trim() || match.right_tag?.trim() || "[BOT]";
+
+            const leftScore = document.getElementById(`score-left-${i}`);
+            const rightScore = document.getElementById(`score-right-${i}`);
+            if (leftScore) leftScore.textContent = match.left_score ?? 0;
+            if (rightScore) rightScore.textContent = match.right_score ?? 0;
+        }
+    });
 }
 
+// Listen for match config changes
+db.ref("intermission/matches").on("value", snap => {
+
+    const data = snap.val() || {};
+
+    gameAmount =
+        Number(data.games_displayed) ||
+        Number(data.amount) ||
+        1;
+
+    createGameSections(gameAmount);
+});
+
+db.ref("intermission/matches/matches").on("value", snap => {
+    updateAllGameData();
+});
 
 /* ===================== */
 /* TIMER LOGIC           */
@@ -543,279 +561,362 @@ let timerData = { duration: 0, start_at: 0, running: false };
 let matchEnded = false;
 
 function clamp(sec) {
-    return Math.min(Math.max(0, Math.floor(sec)), 359999);
+    const max = (99 * 3600) + (59 * 60) + 59;
+    return Math.min(Math.max(0, Math.floor(sec)), max);
 }
 function formatHHMMSS(sec) {
     sec = clamp(sec);
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+function normalizeTimestamp(value) {
+    const num = Number(value) || 0;
+    if (num > 1e12) return num;
+    if (num > 0) return num * 1000;
+    return 0;
 }
 
+db.ref("intermission/state").on("value", snap => {
+    const v = snap.val() || {};
+    matchEnded = !!v.ended;
+    renderTimer();
+});
 function renderTimer() {
-    const el = document.getElementById("timer-display");
-    if (!el) return;
-    if (matchEnded) { el.textContent = "Ended"; return; }
-    const duration = Number(timerData.duration) || 0;
-    let remaining = duration;
-    if (timerData.running && timerData.start_at > 0) {
-        // start_at is unix seconds from D1
-        const elapsed = Math.floor(Date.now() / 1000) - timerData.start_at;
-        remaining = duration - elapsed;
-    }
-    el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "00:00:00";
-}
+    const timerDisplay = document.getElementById("timer-display");
+    if (!timerDisplay) return;
 
-function startRenderLoop() {
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(renderTimer, 500);
-}
-
-/* ===================== */
-/* MAP LOGIC             */
-/* ===================== */
-let currentMapVideo = "";
-
-function applyMap(map, videoUrl) {
-    const mainBox = document.getElementById("main-box");
-    const mapVideo = document.getElementById("map-video");
-
-    if (!map || map === "none" || !videoUrl) {
-        mainBox.classList.remove("show");
-        setTimeout(() => { mapVideo.pause(); mapVideo.removeAttribute("src"); mapVideo.load(); }, 600);
+    if (matchEnded) {
+        timerDisplay.textContent = "Ended";
         return;
     }
 
-    if (videoUrl === currentMapVideo) return; // no change
-    currentMapVideo = videoUrl;
+    const duration = Number(timerData.duration) || 0;
+    let remaining = duration;
 
+    if (timerData.running) {
+        const startAtMs = normalizeTimestamp(timerData.start_at);
+        if (startAtMs > 0) {
+            const elapsed = Math.floor((Date.now() - startAtMs) / 1000);
+            remaining = duration - elapsed;
+        }
+    }
+
+    if (remaining <= 0) {
+        timerDisplay.textContent = "Starting";
+        return;
+    }
+
+    timerDisplay.textContent = formatHHMMSS(remaining);
+}
+function startRenderLoop() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+    timerInterval = setInterval(renderTimer, 500);
+}
+
+db.ref("intermission/timer").on("value", snap => {
+    const v = snap.val() || {};
+    timerData.duration = Number(v.duration) || 0;
+    timerData.start_at = Number(v.start_at) || 0;
+    timerData.running = !!v.running;
+    renderTimer();
+
+    if (timerData.running) {
+        startRenderLoop();
+    } else if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+});
+
+db.ref("intermission/map").on("value", snap => {
+    const data = snap.val();
+
+    const mainBox = document.getElementById("main-box");
+    const mapVideo = document.getElementById("map-video");
+
+    // NONE → slide out immediately
+    if (!data || !data.map || data.map.toLowerCase() === "none") {
+        mainBox.classList.remove("show");
+
+        setTimeout(() => {
+            mapVideo.pause();
+            mapVideo.removeAttribute("src");    
+            mapVideo.load();
+        }, 600);
+
+        return;
+    }
+
+    // ALWAYS reload (fix cross-browser sync)
     mainBox.classList.remove("show");
+
+    const videoUrl = data.video + "?t=" + Date.now(); // cache bust
+
     mapVideo.pause();
-    mapVideo.src = videoUrl + "?t=" + Date.now();
+    mapVideo.src = videoUrl;
     mapVideo.load();
 
     const onReady = () => {
         mapVideo.removeEventListener("canplaythrough", onReady);
-        mapVideo.play().catch(() => {});
+
+        mapVideo.play().catch(()=>{});
         mainBox.classList.add("show");
     };
+
     mapVideo.addEventListener("canplaythrough", onReady);
-}
+});
 
 /* ===================== */
 /* GRAPHICS ROTATION     */
 /* ===================== */
-let graphicsData = { enabled: false, images: [] };
+
+let graphicsData = {
+    enabled: false,
+    images: []
+};
+
 let graphicsIndex = 0;
-const graphicsOverlay = document.getElementById("graphics-overlay");
-const graphicsImage = document.getElementById("graphics-image");
+let graphicsVisible = false;
+
+const graphicsOverlay =
+    document.getElementById("graphics-overlay");
+
+const graphicsImage =
+    document.getElementById("graphics-image");
 
 async function showGraphic(index) {
-    if (!graphicsData.images[index]) return;
+
+    if (!graphicsData.images[index]) {
+        return;
+    }
+
+    const newSrc = graphicsData.images[index];
+
+    // Fade current image out first
     graphicsImage.style.opacity = "0";
+
     await new Promise(r => setTimeout(r, 500));
-    graphicsImage.src = graphicsData.images[index];
-    await new Promise(r => { graphicsImage.onload = r; graphicsImage.onerror = r; });
-    graphicsOverlay.style.opacity = "1";
-    graphicsImage.style.opacity = "1";
-    document.getElementById("main-box").classList.remove("show");
+
+    graphicsImage.src = newSrc;
+
+    // Wait for image load
+    await new Promise(resolve => {
+
+        graphicsImage.onload = resolve;
+        graphicsImage.onerror = resolve;
+
+    });
+
+    // Show overlay
+    graphicsOverlay.style.display = "block";
+
+    // Trigger fade in
+    requestAnimationFrame(() => {
+
+        graphicsOverlay.style.opacity = "1";
+        graphicsImage.style.opacity = "1";
+
+    });
+
+    document.getElementById("main-box")
+        .classList.remove("show");
+
+    graphicsVisible = true;
 }
 
 function hideGraphic(restoreMap = true) {
+
     graphicsOverlay.style.opacity = "0";
-    if (restoreMap && currentMapVideo) {
-        document.getElementById("main-box").classList.add("show");
-    }
+
+    setTimeout(() => {
+        graphicsOverlay.style.display = "none";
+    }, 800);
+
+    graphicsVisible = false;
+
+    if (!restoreMap) return;
+
+    db.ref("intermission/map")
+    .once("value")
+    .then(snap => {
+        const data = snap.val();
+        if (data && data.map && data.map.toLowerCase() !== "none") {
+            document.getElementById("main-box").classList.add("show");
+        }
+    });
 }
 
 async function runGraphicsLoop() {
     while (true) {
-        if (!graphicsData.enabled || !graphicsData.images.length) {
+
+        if (!graphicsData.enabled || graphicsData.images.length === 0) {
             hideGraphic(true);
             await new Promise(r => setTimeout(r, 2000));
             continue;
         }
+
         await showGraphic(graphicsIndex);
+
         await new Promise(r => setTimeout(r, 15000));
+
         graphicsIndex++;
         const cycleComplete = graphicsIndex >= graphicsData.images.length;
+
+        // Only restore map after the full cycle, not between graphics
         hideGraphic(cycleComplete);
+
         await new Promise(r => setTimeout(r, 1000));
+
         if (cycleComplete) {
             graphicsIndex = 0;
             await new Promise(r => setTimeout(r, 90000));
         }
     }
 }
-setTimeout(runGraphicsLoop, 3000);
+
+setTimeout(() => {
+    runGraphicsLoop();
+}, 3000);
+
+// Firebase sync
+db.ref("intermission/graphics")
+.on("value", snap => {
+
+    const data = snap.val() || {};
+
+    graphicsData.enabled =
+        !!data.enabled;
+
+    graphicsData.images =
+        Object.values(data.images || {})
+            .filter(url =>
+                typeof url === "string" &&
+                url.trim() !== ""
+            );
+
+    // Reset index if out of bounds
+    if (graphicsIndex >= graphicsData.images.length) {
+        graphicsIndex = 0;
+    }
+
+    // Hide instantly if disabled
+    if (
+        !graphicsData.enabled ||
+        graphicsData.images.length === 0
+    ) {
+        hideGraphic();
+    }
+});
+
+db.ref("intermission/series").on("value", snap => {
+    const v = snap.val() || {};
+    const type = v.type || "";
+
+    const bofEl = document.getElementById("BOF");
+
+    if (!type) {
+        bofEl.textContent = "BEST OF";
+        return;
+    }
+
+    // Extract number from BO1 / BO3 / BO5
+    const num = type.replace("BO", "");
+
+    bofEl.textContent = `BEST OF ${num}`;
+});
+renderTimer();
 
 /* ===================== */
-/* SPONSOR ROTATION      */
+/* SPONSOR BOX            */
 /* ===================== */
-let sponsorInterval = null;
-function startSponsorRotation() {
-    const imgs = document.querySelectorAll("#sponsor-box .sponsor-img");
-    if (!imgs.length) return;
-    let i = 0;
-    if (sponsorInterval) clearInterval(sponsorInterval);
-    sponsorInterval = setInterval(() => {
-        imgs[i].classList.remove("active");
-        i = (i + 1) % imgs.length;
-        imgs[i].classList.add("active");
-    }, 10000);
-}
-startSponsorRotation();
+// Sponsor is always visible (no slide animation in 2026 layout)
 
 /* ===================== */
-/* SPOTIFY               */
+/* SPOTIFY LOGIC         */
 /* ===================== */
+let spotifyToken = localStorage.getItem("spotify_access_token");
 async function pollNowPlaying() {
-    const spotToken = localStorage.getItem("spotify_access_token");
+    spotifyToken = localStorage.getItem("spotify_access_token");
     const el = document.getElementById("scroll-text");
-    if (!spotToken) { el.textContent = ""; return; }
-    try {
-        const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-            headers: { Authorization: "Bearer " + spotToken }
-        });
-        if (!res.ok || res.status === 204) { el.textContent = ""; return; }
+    if(!spotifyToken){ el.textContent="Not connected"; return; }
+    try{
+        const url = "https://api.spotify.com/v1/me/player/currently-playing";
+        console.log("Fetching:", url);
+        const res = await fetch(url,{ headers:{ Authorization:"Bearer "+spotifyToken } });
+        if(!res.ok || res.status===204){ el.textContent="Not playing"; return; }
         const data = await res.json();
-        if (!data.item) { el.textContent = ""; return; }
-        el.textContent = `${data.item.name} - ${data.item.artists.map(a => a.name).join(", ")}`;
-    } catch { el.textContent = ""; }
+        if(!data.item){ el.textContent="Not playing"; return; }
+        el.textContent = `${data.item.name} — ${data.item.artists.map(a=>a.name).join(", ")}`;
+    }catch{ el.textContent="Not playing"; }
 }
-setInterval(pollNowPlaying, 3000);
+setInterval(pollNowPlaying,3000);
 pollNowPlaying();
 
 /* ===================== */
-/* D1 POLL - main loop   */
+/* EVENT (Road2 / WaveOCE) */
 /* ===================== */
-function applyState(s) {
-    // Timer
-    matchEnded = !!s.timer_ended;
-    timerData.duration = s.timer_duration || 0;
-    timerData.start_at = s.timer_start_at || 0;
-    timerData.running  = !!s.timer_running;
-    renderTimer();
-    if (timerData.running) startRenderLoop();
-    else if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+db.ref("intermission/event").on("value", snap => {
+    const v = snap.val() || {};
+    const eventName = v.name || "";
 
-    // Event text
-    const eventEl = document.getElementById("timer-event-text");
-    if (eventEl) eventEl.textContent = s.event_name || "";
-
-    // Map
-    applyMap(s.map, s.map_video);
-
-    // Matches
-    const matches = s.matches || {};
-    const amount = matches.games_displayed || matches.amount || 1;
-    if (amount !== gameAmount) {
-        gameAmount = amount;
-        createGameSections(gameAmount);
-    }
-    updateAllGameData(matches.matches || {});
-
-    // BOF label
-    const bofEl = document.getElementById("BOF");
-    if (bofEl) {
-        const num = (s.series_type || "").replace("BO", "");
-        bofEl.textContent = num ? `BEST OF ${num}` : "BEST OF";
-    }
-
-    // Graphics
-    const newImages = Array.isArray(s.graphics_images) ? s.graphics_images : [];
-    const changed = JSON.stringify(newImages) !== JSON.stringify(graphicsData.images);
-    graphicsData.enabled = !!s.graphics_enabled;
-    graphicsData.images  = newImages;
-    if (changed && graphicsIndex >= graphicsData.images.length) graphicsIndex = 0;
-    if (!graphicsData.enabled || !graphicsData.images.length) hideGraphic(!!currentMapVideo);
-
-    // Sponsors — swap based on preset
     const sponsorBox = document.getElementById("sponsor-box");
-    const preset = s.event_preset || "road2";
-    const sponsorSets = {
-        road2: [
-            "Road 2 OCE Invitationals logo.png",
-            "Road 2 OCE Invitational.png",
-            "Road 2 OCE logo Single Invitational.png",
-        ],
-        waveoce: [
+    const timerEventText = document.getElementById("timer-event-text");
+
+    sponsorBox.innerHTML = "";
+
+    let images = [];
+    let text = "";
+
+    if (eventName === "waveoce") {
+        images = [
             "Rising_Tide_White.png",
             "Wave OCE Logo_white.png",
-            "Wave OCE Rising Tides Brandmark Logo_White.png",
-        ],
-    };
-    const brandColors = {
-        road2:   "rgb(120, 40, 180)",
-        waveoce: "rgb(10, 105, 164)",
-    };
-    document.documentElement.style.setProperty(
-        "--brand-color",
-        brandColors[preset] || brandColors.waveoce
-    );
-    const imgs = sponsorSets[preset] || sponsorSets.road2;
-    sponsorBox.innerHTML = "";
-    imgs.forEach((src, i) => {
+            "Wave OCE Rising Tides Brandmark Logo_White.png"
+        ];
+        text = "WaveOCE Rising Tides Split 2";
+    } 
+    else if (eventName === "road2") {
+        images = [
+            "Road 2 OCE Invitationals logo.png",
+            "Road 2 OCE Invitational.png",
+            "Road 2 OCE logo Single Invitational.png"
+        ];
+        text = "Road 2 Invitationals";
+    } 
+    else {
+        // fallback (optional)
+        images = [];
+        text = "";
+    }
+
+    // Update timer text
+    timerEventText.textContent = text;
+
+    // Rebuild sponsor images
+    images.forEach((src, index) => {
         const img = document.createElement("img");
         img.src = src;
-        img.className = "sponsor-img" + (i === 0 ? " active" : "");
+        img.className = "sponsor-img" + (index === 0 ? " active" : "");
         sponsorBox.appendChild(img);
     });
-    startSponsorRotation();
 
-    //spotify
-    const musicBox = document.getElementById("music-box");
-    if (musicBox) musicBox.style.display = s.spotify_enabled ? "" : "none";
+    // Restart rotation logic
+    let sponsorImages = document.querySelectorAll("#sponsor-box .sponsor-img");
+    let sponsorIndex = 0;
 
-    if (s.spotify_token) {
-        localStorage.setItem("spotify_access_token", s.spotify_token);
+    if (sponsorImages.length > 0) {
+        setInterval(() => {
+            sponsorImages[sponsorIndex].classList.remove("active");
+            sponsorIndex = (sponsorIndex + 1) % sponsorImages.length;
+            sponsorImages[sponsorIndex].classList.add("active");
+        }, 10000);
     }
-
-    // Lineup
-    const lineup = s.matches?.lineup || {};
-    const lineupBox = document.getElementById("lineup-box");
-    const players = lineup.players || [];
-
-    if (lineup.visible && players.length) {
-        document.getElementById("lineup-logo").style.backgroundImage =
-            lineup.logo ? `url(${lineup.logo})` : "none";
-        document.getElementById("lineup-tag").textContent = lineup.tag || "";
-
-        const playersEl = document.getElementById("lineup-players");
-        playersEl.innerHTML = players.map(p => `
-            <div class="lineup-player">
-                ${p.photo ? `<img class="lineup-player-photo" src="${p.photo}" alt="${p.name}">` : ""}
-                <div class="lineup-player-name">${p.name || ""}</div>
-            </div>
-        `).join("");
-
-        lineupBox.classList.add("show");
-    } else {
-        lineupBox.classList.remove("show");
-    }
-}
-
-async function pollOverlay() {
-    try {
-        const res = await fetch(`/api/overlay/${accountId}`);
-        if (!res.ok) return;
-        const s = await res.json();
-        // Only re-apply if something changed
-        if (s.updated_at !== lastUpdatedAt) {
-            lastUpdatedAt = s.updated_at;
-            overlayState = s;
-            applyState(s);
-        }
-    } catch (e) {
-        console.warn("Poll failed:", e);
-    }
-}
-
-// Initial load then poll every 2s
-pollOverlay();
-setInterval(pollOverlay, 2000);
-
+});
 </script>
+
 </body>
 </html>
