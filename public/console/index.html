@@ -202,7 +202,7 @@
       <div class="card">
         <label>Select Map</label>
         <select id="map-select">
-          <option value="none">- None -</option>
+          <option value="none">— None —</option>
           <option value="Abyss">Abyss</option>
           <option value="Ascent">Ascent</option>
           <option value="Bind">Bind</option>
@@ -262,15 +262,9 @@
     <section class="panel" id="panel-event">
       <h2>Event Branding</h2>
       <div class="card">
-        <label>Event Preset</label>
-        <select id="event-preset">
-          <option value="road2">Road 2 Invitationals</option>
-          <option value="waveoce">Wave OCE Rising Tides</option>
-          <option value="custom">Custom</option>
-        </select>
-        <label style="margin-top:10px;">Event Text (timer bar)</label>
-        <input type="text" id="event-name-input" placeholder="e.g. Road 2 Invitationals - Group Stage - Day 1">
-        <button class="btn wide" id="save-event">Save Event</button>
+        <label>Event Name (shown in timer bar)</label>
+        <input type="text" id="event-name-input" placeholder="Road 2 Invitationals - Group Stage - Day 1">
+        <button class="btn wide" id="save-event">Save Event Name</button>
       </div>
     </section>
 
@@ -307,54 +301,163 @@
     <!-- CAMERA -->
     <section class="panel" id="panel-camera">
       <h2>Camera</h2>
+
+      <!-- Room -->
       <div class="card">
-        <label>Layout</label>
-        <select id="cam-layout">
-          <option value="duo">Duo</option>
-          <option value="solo">Solo</option>
-          <option value="none">None</option>
-        </select>
+        <h3>VDO Room</h3>
         <div class="row">
           <div>
-            <label>Solo Cam</label>
+            <label>Room Name</label>
+            <input type="text" id="cam-room" placeholder="auto-generated">
+          </div>
+          <button class="btn secondary" id="cam-gen-room" style="margin-top:18px;">New Room</button>
+        </div>
+        <label style="margin-top:4px;">Director Link</label>
+        <div class="row">
+          <input type="text" id="cam-director-url" readonly style="color:#888;">
+          <button class="btn secondary" id="cam-copy-director" style="margin-top:0;flex:0;">Copy</button>
+        </div>
+      </div>
+
+      <!-- Layout -->
+      <div class="card">
+        <h3>Layout</h3>
+        <div class="row">
+          <div>
+            <label>Layout</label>
+            <select id="cam-layout">
+              <option value="duo">Duo</option>
+              <option value="solo">Solo</option>
+              <option value="none">None</option>
+            </select>
+          </div>
+          <div>
+            <label>Solo Side</label>
             <select id="cam-solo">
-              <option value="none">- None -</option>
               <option value="left">Left</option>
               <option value="right">Right</option>
             </select>
           </div>
         </div>
-
-        <div class="game-block" style="margin-top:12px;">
-          <h4>Left Camera</h4>
-          <div class="row">
-            <button class="btn secondary" id="gen-left">Generate VDO Link</button>
-          </div>
-          <label>View URL</label>
-          <input type="text" id="cam-left-url" placeholder="https://vdo.ninja/?view=...">
-          <div class="row">
-            <div><label>Gain</label><input type="number" id="cam-left-gain" min="0" max="3" step="0.1" value="1"></div>
-            <div><label>Compressor (dB)</label><input type="number" id="cam-left-comp" min="-60" max="0" value="-20"></div>
-            <div style="padding-top:20px;"><label><input type="checkbox" id="cam-left-mute"> Mute</label></div>
-          </div>
-        </div>
-
-        <div class="game-block">
-          <h4>Right Camera</h4>
-          <div class="row">
-            <button class="btn secondary" id="gen-right">Generate VDO Link</button>
-          </div>
-          <label>View URL</label>
-          <input type="text" id="cam-right-url" placeholder="https://vdo.ninja/?view=...">
-          <div class="row">
-            <div><label>Gain</label><input type="number" id="cam-right-gain" min="0" max="3" step="0.1" value="1"></div>
-            <div><label>Compressor (dB)</label><input type="number" id="cam-right-comp" min="-60" max="0" value="-20"></div>
-            <div style="padding-top:20px;"><label><input type="checkbox" id="cam-right-mute"> Mute</label></div>
-          </div>
-        </div>
-
-        <button class="btn wide" id="save-cam">Save Camera Config</button>
       </div>
+
+      <!-- Left Camera -->
+      <div class="card">
+        <h3>Left Camera</h3>
+        <div class="row">
+          <div>
+            <label>Label</label>
+            <input type="text" id="cam-left-label" placeholder="Caster 1">
+          </div>
+          <div>
+            <label>Stream ID</label>
+            <input type="text" id="cam-left-sid" placeholder="auto-generated" readonly style="color:#888;">
+          </div>
+          <button class="btn secondary" id="cam-left-gen" style="margin-top:18px;flex:0;">Generate</button>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>Push Link (send to caster)</label>
+            <input type="text" id="cam-left-push" readonly style="color:#888;font-size:11px;">
+          </div>
+          <button class="btn secondary" id="cam-left-copy-push" style="margin-top:18px;flex:0;">Copy</button>
+        </div>
+
+        <p style="font-size:11px;color:#555;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;">Real-time controls</p>
+
+        <div class="row">
+          <div>
+            <label>Volume — <span id="cam-left-vol-display">100</span>%</label>
+            <input type="range" id="cam-left-volume" min="0" max="200" value="100" style="width:100%;">
+          </div>
+          <div>
+            <label>Panning — <span id="cam-left-pan-display">C</span></label>
+            <input type="range" id="cam-left-panning" min="-100" max="100" value="0" style="width:100%;">
+          </div>
+          <div style="padding-top:18px;">
+            <button class="btn secondary" id="cam-left-mute-btn">🔇 Mute</button>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">🔗 Push link params (regenerate link to apply)</p>
+
+        <div class="row">
+          <div>
+            <label>Mic Gain — <span id="cam-left-gain-display">1.0</span>x</label>
+            <input type="range" id="cam-left-gain" min="0" max="3" step="0.1" value="1" style="width:100%;">
+          </div>
+          <div>
+            <label>Audio Bitrate (kbps)</label>
+            <input type="number" id="cam-left-bitrate" min="32" max="320" value="128">
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:4px;">
+          <label><input type="checkbox" id="cam-left-compressor" checked> Compressor</label>
+          <label><input type="checkbox" id="cam-left-ns" checked> Noise Suppression</label>
+          <label><input type="checkbox" id="cam-left-ec" checked> Echo Cancellation</label>
+          <label><input type="checkbox" id="cam-left-agc"> Auto Gain Control</label>
+        </div>
+      </div>
+
+      <!-- Right Camera -->
+      <div class="card">
+        <h3>Right Camera</h3>
+        <div class="row">
+          <div>
+            <label>Label</label>
+            <input type="text" id="cam-right-label" placeholder="Caster 2">
+          </div>
+          <div>
+            <label>Stream ID</label>
+            <input type="text" id="cam-right-sid" placeholder="auto-generated" readonly style="color:#888;">
+          </div>
+          <button class="btn secondary" id="cam-right-gen" style="margin-top:18px;flex:0;">Generate</button>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>Push Link (send to caster)</label>
+            <input type="text" id="cam-right-push" readonly style="color:#888;font-size:11px;">
+          </div>
+          <button class="btn secondary" id="cam-right-copy-push" style="margin-top:18px;flex:0;">Copy</button>
+        </div>
+
+        <p style="font-size:11px;color:#555;margin-bottom:12px;text-transform:uppercase;letter-spacing:1px;">⚡ Real-time controls</p>
+
+        <div class="row">
+          <div>
+            <label>Volume — <span id="cam-right-vol-display">100</span>%</label>
+            <input type="range" id="cam-right-volume" min="0" max="200" value="100" style="width:100%;">
+          </div>
+          <div>
+            <label>Panning — <span id="cam-right-pan-display">C</span></label>
+            <input type="range" id="cam-right-panning" min="-100" max="100" value="0" style="width:100%;">
+          </div>
+          <div style="padding-top:18px;">
+            <button class="btn secondary" id="cam-right-mute-btn">🔇 Mute</button>
+          </div>
+        </div>
+
+        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">🔗 Push link params (regenerate link to apply)</p>
+
+        <div class="row">
+          <div>
+            <label>Mic Gain — <span id="cam-right-gain-display">1.0</span>x</label>
+            <input type="range" id="cam-right-gain" min="0" max="3" step="0.1" value="1" style="width:100%;">
+          </div>
+          <div>
+            <label>Audio Bitrate (kbps)</label>
+            <input type="number" id="cam-right-bitrate" min="32" max="320" value="128">
+          </div>
+        </div>
+        <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:4px;">
+          <label><input type="checkbox" id="cam-right-compressor" checked> Compressor</label>
+          <label><input type="checkbox" id="cam-right-ns" checked> Noise Suppression</label>
+          <label><input type="checkbox" id="cam-right-ec" checked> Echo Cancellation</label>
+          <label><input type="checkbox" id="cam-right-agc"> Auto Gain Control</label>
+        </div>
+      </div>
+
+      <button class="btn wide" id="save-cam">Save All Camera Config</button>
     </section>
 
     <!-- SPOTIFY -->
@@ -477,7 +580,6 @@ function populateUI(s) {
 
   // Event name
   byid("event-name-input").value = s.event_name || "";
-  byid("event-preset").value = s.event_preset || "road2";
 
   // Timeout
   const to = matches.timeout || {};
@@ -488,21 +590,57 @@ function populateUI(s) {
 
   // Camera
   const cam = matches.camera || {};
+  const leftCam  = cam.cams?.left  || {};
+  const rightCam = cam.cams?.right || {};
   byid("cam-layout").value = cam.layout || "duo";
-  byid("cam-solo").value = cam.solo || "none";
-  byid("cam-left-url").value = cam.cams?.left?.url || "";
-  byid("cam-right-url").value = cam.cams?.right?.url || "";
-  byid("cam-left-gain").value = cam.cams?.left?.gain ?? 1;
-  byid("cam-right-gain").value = cam.cams?.right?.gain ?? 1;
-  byid("cam-left-comp").value = cam.cams?.left?.compressor ?? -20;
-  byid("cam-right-comp").value = cam.cams?.right?.compressor ?? -20;
-  byid("cam-left-mute").checked = cam.cams?.left?.mute ?? false;
-  byid("cam-right-mute").checked = cam.cams?.right?.mute ?? false;
+  byid("cam-solo").value   = cam.solo   || "left";
+  byid("cam-room").value   = cam.room   || "";
+  updateDirectorUrl();
+
+  // Left
+  byid("cam-left-label").value    = leftCam.label      || "";
+  byid("cam-left-sid").value      = leftCam.stream_id  || "";
+  byid("cam-left-volume").value   = Math.round((leftCam.volume ?? 1) * 100);
+  byid("cam-left-vol-display").textContent = Math.round((leftCam.volume ?? 1) * 100);
+  byid("cam-left-panning").value  = leftCam.panning    ?? 0;
+  const lp = leftCam.panning ?? 0;
+  byid("cam-left-pan-display").textContent = lp === 0 ? "C" : lp < 0 ? `L${Math.abs(lp)}` : `R${lp}`;
+  byid("cam-left-gain").value     = leftCam.gain       ?? 1;
+  byid("cam-left-gain-display").textContent = (leftCam.gain ?? 1).toFixed(1);
+  byid("cam-left-bitrate").value  = leftCam.bitrate    ?? 128;
+  byid("cam-left-compressor").checked       = leftCam.compressor        ?? true;
+  byid("cam-left-ns").checked               = leftCam.noise_suppression ?? true;
+  byid("cam-left-ec").checked               = leftCam.echo_cancellation ?? true;
+  byid("cam-left-agc").checked              = leftCam.auto_gain         ?? false;
+  if (leftCam.mute) {
+    byid("cam-left-mute-btn").textContent = "🔊 Unmute";
+    byid("cam-left-mute-btn").style.background = "#c0392b";
+  }
+  updatePushUrl("left");
+
+  // Right
+  byid("cam-right-label").value   = rightCam.label      || "";
+  byid("cam-right-sid").value     = rightCam.stream_id  || "";
+  byid("cam-right-volume").value  = Math.round((rightCam.volume ?? 1) * 100);
+  byid("cam-right-vol-display").textContent = Math.round((rightCam.volume ?? 1) * 100);
+  byid("cam-right-panning").value = rightCam.panning    ?? 0;
+  const rp = rightCam.panning ?? 0;
+  byid("cam-right-pan-display").textContent = rp === 0 ? "C" : rp < 0 ? `L${Math.abs(rp)}` : `R${rp}`;
+  byid("cam-right-gain").value    = rightCam.gain       ?? 1;
+  byid("cam-right-gain-display").textContent = (rightCam.gain ?? 1).toFixed(1);
+  byid("cam-right-bitrate").value = rightCam.bitrate    ?? 128;
+  byid("cam-right-compressor").checked      = rightCam.compressor        ?? true;
+  byid("cam-right-ns").checked              = rightCam.noise_suppression ?? true;
+  byid("cam-right-ec").checked              = rightCam.echo_cancellation ?? true;
+  byid("cam-right-agc").checked             = rightCam.auto_gain         ?? false;
+  if (rightCam.mute) {
+    byid("cam-right-mute-btn").textContent = "🔊 Unmute";
+    byid("cam-right-mute-btn").style.background = "#c0392b";
+  }
+  updatePushUrl("right");
 
   // Spotify
   byid("spotify-enabled").checked = !!s.spotify_enabled;
-
-  populateLineup(s);
 }
 
 // ── Score Inputs ──────────────────────────────────────────────────────────────
@@ -649,23 +787,8 @@ byid("save-graphics").addEventListener("click", () => {
 });
 
 // ── Event ─────────────────────────────────────────────────────────────────────
-const presetDefaults = {
-    road2:   "Road 2 Invitationals",
-    waveoce: "WaveOCE Rising Tides",
-};
-
-byid("event-preset").addEventListener("change", () => {
-    const preset = byid("event-preset").value;
-    if (preset !== "custom") {
-        byid("event-name-input").value = presetDefaults[preset] || "";
-    }
-});
-
 byid("save-event").addEventListener("click", () => {
-    saveState({
-        event_name: byid("event-name-input").value.trim(),
-        event_preset: byid("event-preset").value,
-    });
+  saveState({ event_name: byid("event-name-input").value.trim() });
 });
 
 // ── Timeout ───────────────────────────────────────────────────────────────────
@@ -685,42 +808,200 @@ byid("save-timeout").addEventListener("click", () => {
 });
 
 // ── Camera ────────────────────────────────────────────────────────────────────
-function generateVdoLinks() {
-  const id = crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-  return { push: `https://vdo.ninja/?push=${id}`, view: `https://vdo.ninja/?view=${id}` };
+function randomId() {
+  return crypto.randomUUID().replace(/-/g, "").slice(0, 10);
 }
-byid("gen-left").addEventListener("click", () => {
-  const l = generateVdoLinks();
-  byid("cam-left-url").value = l.view;
-  navigator.clipboard.writeText(l.push).catch(() => {});
-  toast("Push link copied to clipboard");
+
+function buildPushUrl(side) {
+  const sid     = byid(`cam-${side}-sid`).value.trim();
+  const room    = byid("cam-room").value.trim();
+  const label   = byid(`cam-${side}-label`).value.trim() || side;
+  const gain    = byid(`cam-${side}-gain`).value;
+  const bitrate = byid(`cam-${side}-bitrate`).value;
+  const comp    = byid(`cam-${side}-compressor`).checked;
+  const ns      = byid(`cam-${side}-ns`).checked;
+  const ec      = byid(`cam-${side}-ec`).checked;
+  const agc     = byid(`cam-${side}-agc`).checked;
+
+  if (!sid || !room) return "";
+
+  const p = new URLSearchParams({
+    push: sid,
+    room,
+    label,
+    audiobitrate: bitrate,
+    gain,
+  });
+  if (comp) p.set("compressor", "1");
+  if (!ns)  p.set("noisesuppression", "0");
+  if (!ec)  p.set("echocancellation", "0");
+  if (!agc) p.set("autoGainControl", "0");
+
+  return "https://vdo.ninja/?" + p.toString();
+}
+
+function updateDirectorUrl() {
+  const room = byid("cam-room").value.trim();
+  byid("cam-director-url").value = room
+    ? `https://vdo.ninja/?director=${room}`
+    : "";
+}
+
+function updatePushUrl(side) {
+  byid(`cam-${side}-push`).value = buildPushUrl(side);
+}
+
+// Room generation
+byid("cam-gen-room").addEventListener("click", () => {
+  byid("cam-room").value = "room-" + randomId();
+  updateDirectorUrl();
+  updatePushUrl("left");
+  updatePushUrl("right");
 });
-byid("gen-right").addEventListener("click", () => {
-  const l = generateVdoLinks();
-  byid("cam-right-url").value = l.view;
-  navigator.clipboard.writeText(l.push).catch(() => {});
-  toast("Push link copied to clipboard");
+byid("cam-room").addEventListener("input", () => {
+  updateDirectorUrl();
+  updatePushUrl("left");
+  updatePushUrl("right");
 });
+byid("cam-copy-director").addEventListener("click", () => {
+  navigator.clipboard.writeText(byid("cam-director-url").value).catch(() => {});
+  toast("Director link copied");
+});
+
+// Per-side generate
+["left", "right"].forEach(side => {
+  byid(`cam-${side}-gen`).addEventListener("click", () => {
+    byid(`cam-${side}-sid`).value = randomId();
+    updatePushUrl(side);
+    toast(`${side} stream ID generated`);
+  });
+
+  byid(`cam-${side}-copy-push`).addEventListener("click", () => {
+    navigator.clipboard.writeText(byid(`cam-${side}-push`).value).catch(() => {});
+    toast(`${side} push link copied`);
+  });
+
+  // Rebuild push link when params change
+  ["label", "gain", "bitrate", "compressor", "ns", "ec", "agc"].forEach(param => {
+    const el = byid(`cam-${side}-${param}`);
+    if (el) el.addEventListener("change", () => updatePushUrl(side));
+  });
+
+  // Gain display
+  byid(`cam-${side}-gain`).addEventListener("input", () => {
+    byid(`cam-${side}-gain-display`).textContent =
+      parseFloat(byid(`cam-${side}-gain`).value).toFixed(1);
+    updatePushUrl(side);
+  });
+
+  // Volume display + real-time save
+  let volTimer;
+  byid(`cam-${side}-volume`).addEventListener("input", () => {
+    const v = byid(`cam-${side}-volume`).value;
+    byid(`cam-${side}-vol-display`).textContent = v;
+    clearTimeout(volTimer);
+    volTimer = setTimeout(() => saveCamRealtime(), 400);
+  });
+
+  // Panning display + real-time save
+  let panTimer;
+  byid(`cam-${side}-panning`).addEventListener("input", () => {
+    const v = parseInt(byid(`cam-${side}-panning`).value, 10);
+    byid(`cam-${side}-pan-display`).textContent =
+      v === 0 ? "C" : v < 0 ? `L${Math.abs(v)}` : `R${v}`;
+    clearTimeout(panTimer);
+    panTimer = setTimeout(() => saveCamRealtime(), 400);
+  });
+
+  // Mute toggle
+  let mutedLeft = false, mutedRight = false;
+  byid(`cam-${side}-mute-btn`).addEventListener("click", () => {
+    if (side === "left") mutedLeft = !mutedLeft;
+    else mutedRight = !mutedRight;
+    const muted = side === "left" ? mutedLeft : mutedRight;
+    byid(`cam-${side}-mute-btn`).textContent = muted ? "🔊 Unmute" : "🔇 Mute";
+    byid(`cam-${side}-mute-btn`).style.background = muted ? "#c0392b" : "";
+    saveCamRealtime();
+  });
+});
+
+// Debounced real-time save (volume, panning, mute only)
+async function saveCamRealtime() {
+  const existing = state.matches || {};
+  const cam = existing.camera || {};
+  const cams = cam.cams || {};
+
+  const updated = {
+    ...cam,
+    cams: {
+      left: {
+        ...(cams.left || {}),
+        volume: parseInt(byid("cam-left-volume").value, 10) / 100,
+        panning: parseInt(byid("cam-left-panning").value, 10),
+        mute: byid("cam-left-mute-btn").textContent.includes("Unmute"),
+      },
+      right: {
+        ...(cams.right || {}),
+        volume: parseInt(byid("cam-right-volume").value, 10) / 100,
+        panning: parseInt(byid("cam-right-panning").value, 10),
+        mute: byid("cam-right-mute-btn").textContent.includes("Unmute"),
+      },
+    },
+  };
+
+  const merged = { ...state, matches: { ...existing, camera: updated } };
+  await fetch(`${API}/api/overlay/${accountId}`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(merged),
+  });
+  state = merged;
+  // No toast for real-time to avoid spam
+}
+
+// Full save
 byid("save-cam").addEventListener("click", () => {
   const existing = state.matches || {};
+  const cam = existing.camera || {};
+  const cams = cam.cams || {};
+
   saveState({
     matches: {
       ...existing,
       camera: {
         layout: byid("cam-layout").value,
         solo: byid("cam-solo").value,
+        room: byid("cam-room").value.trim(),
         cams: {
           left: {
-            url: byid("cam-left-url").value,
-            gain: parseFloat(byid("cam-left-gain").value),
-            compressor: parseFloat(byid("cam-left-comp").value),
-            mute: byid("cam-left-mute").checked,
+            ...(cams.left || {}),
+            stream_id:   byid("cam-left-sid").value.trim(),
+            label:       byid("cam-left-label").value.trim(),
+            push_url:    byid("cam-left-push").value,
+            volume:      parseInt(byid("cam-left-volume").value, 10) / 100,
+            panning:     parseInt(byid("cam-left-panning").value, 10),
+            mute:        byid("cam-left-mute-btn").textContent.includes("Unmute"),
+            gain:        parseFloat(byid("cam-left-gain").value),
+            bitrate:     parseInt(byid("cam-left-bitrate").value, 10),
+            compressor:  byid("cam-left-compressor").checked,
+            noise_suppression: byid("cam-left-ns").checked,
+            echo_cancellation: byid("cam-left-ec").checked,
+            auto_gain:   byid("cam-left-agc").checked,
           },
           right: {
-            url: byid("cam-right-url").value,
-            gain: parseFloat(byid("cam-right-gain").value),
-            compressor: parseFloat(byid("cam-right-comp").value),
-            mute: byid("cam-right-mute").checked,
+            ...(cams.right || {}),
+            stream_id:   byid("cam-right-sid").value.trim(),
+            label:       byid("cam-right-label").value.trim(),
+            push_url:    byid("cam-right-push").value,
+            volume:      parseInt(byid("cam-right-volume").value, 10) / 100,
+            panning:     parseInt(byid("cam-right-panning").value, 10),
+            mute:        byid("cam-right-mute-btn").textContent.includes("Unmute"),
+            gain:        parseFloat(byid("cam-right-gain").value),
+            bitrate:     parseInt(byid("cam-right-bitrate").value, 10),
+            compressor:  byid("cam-right-compressor").checked,
+            noise_suppression: byid("cam-right-ns").checked,
+            echo_cancellation: byid("cam-right-ec").checked,
+            auto_gain:   byid("cam-right-agc").checked,
           },
         },
       },
