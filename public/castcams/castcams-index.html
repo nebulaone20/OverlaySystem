@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+  }
+  #cam-container {
+    width: 1920px;
+    height: 1080px;
+    position: relative;
+  }
+  .cam-iframe {
+    border: none;
+    background: transparent;
+    display: block;
+  }
+  .duo-wrap {
+    display: flex;
+    width: 1920px;
+    height: 1080px;
+  }
+  .duo-wrap .cam-iframe {
+    width: 960px;
+    height: 1080px;
+  }
+  .solo-wrap .cam-iframe {
+    width: 1920px;
+    height: 1080px;
+  }
+</style>
+</head>
+<body>
+<div id="cam-container"></div>
+
+<script>
+  const accountId = new URLSearchParams(location.search).get("id");
+  if (!accountId) {
+    document.body.innerHTML = "<p style='color:red;padding:40px;font-size:24px;'>Missing ?id= in URL</p>";
+  }
+
+  let prevLayout = null;
+  let prevLeftUrl = null;
+  let prevRightUrl = null;
+  let prevSoloUrl = null;
+
+  // Track last applied audio per side to avoid spamming postMessage
+  let lastAudio = { left: {}, right: {}, solo: {} };
+
+  function buildViewUrl(streamId, roomName) {
+    if (!streamId || !roomName) return null;
+    const p = new URLSearchParams({
+      view: streamId,
+      room: roomName,
+      cleanoutput: "1",
+      nocontrols: "1",
+      transparent: "1",
+    });
+    return "https://vdo.ninja/?" + p.toString();
+  }
+
+  function sendAudio(iframe, side, cam) {
+    if (!iframe || !iframe.contentWindow) return;
+    const volume = cam.mute ? 0 : Math.round((cam.volume ?? 1) * 100);
+    const panning = cam.panning ?? 0;
+
+    // Only send if changed
+    if (lastAudio[side].volume !== volume) {
+      iframe.contentWindow.postMessage({ volume }, "*");
+      lastAudio[side].volume = volume;
+    }
+    if (lastAudio[side].panning !== panning) {
+      iframe.contentWindow.postMessage({ panning }, "*");
+      lastAudio[side].panning = panning;
+    }
+  }
+
+  function applyLayout(s) {
+    const container = document.getElementById("cam-container");
+    const cam = (s.matches || {}).camera || {};
+    const layout = cam.layout || "none";
+    const cams = cam.cams || {};
+    const room = cam.room || "";
+
+    if (layout === "none") {
+      container.innerHTML = "";
+      prevLayout = "none";
+      lastAudio = { left: {}, right: {}, solo: {} };
+      return;
+    }
+
+    if (layout === "duo") {
+      const leftUrl  = buildViewUrl(cams.left?.stream_id, room);
+      const rightUrl = buildViewUrl(cams.right?.stream_id, room);
+
+      if (prevLayout !== "duo" || prevLeftUrl !== leftUrl || prevRightUrl !== rightUrl) {
+        container.innerHTML = `
+          <div class="duo-wrap">
+            <iframe id="iframe-left"  class="cam-iframe" src="${leftUrl  || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
+            <iframe id="iframe-right" class="cam-iframe" src="${rightUrl || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
+          </div>`;
+        prevLayout   = "duo";
+        prevLeftUrl  = leftUrl;
+        prevRightUrl = rightUrl;
+        lastAudio    = { left: {}, right: {}, solo: {} };
+      }
+
+      // Real-time audio
+      const iLeft  = document.getElementById("iframe-left");
+      const iRight = document.getElementById("iframe-right");
+      if (iLeft)  sendAudio(iLeft,  "left",  cams.left  || {});
+      if (iRight) sendAudio(iRight, "right", cams.right || {});
+    }
+
+    if (layout === "solo") {
+      const soloSide = cam.solo || "left";
+      const soloCam  = cams[soloSide] || {};
+      const soloUrl  = buildViewUrl(soloCam.stream_id, room);
+
+      if (prevLayout !== "solo" || prevSoloUrl !== soloUrl) {
+        container.innerHTML = `
+          <div class="solo-wrap">
+            <iframe id="iframe-solo" class="cam-iframe" src="${soloUrl || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
+          </div>`;
+        prevLayout  = "solo";
+        prevSoloUrl = soloUrl;
+        lastAudio   = { left: {}, right: {}, solo: {} };
+      }
+
+      const iSolo = document.getElementById("iframe-solo");
+      if (iSolo) sendAudio(iSolo, "solo", soloCam);
+    }
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`/api/overlay/${accountId}`);
+      if (!res.ok) return;
+      const s = await res.json();
+      applyLayout(s);
+    } catch (e) {
+      console.warn("Poll error:", e);
+    }
+  }
+
+  poll();
+  setInterval(poll, 2000);
+</script>
+</body>
+</html>
