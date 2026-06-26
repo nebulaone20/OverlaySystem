@@ -88,6 +88,7 @@ function defaultOverlay(accountId) {
         timer_running: 0,
         timer_ended: 0,
         event_name: "",
+        event_preset: "waveoce",
         map: "none",
         map_video: "",
         series_type: "BO1",
@@ -108,6 +109,7 @@ function parseOverlay(row) {
         timer_ended: !!row.timer_ended,
         graphics_enabled: !!row.graphics_enabled,
         spotify_enabled: !!row.spotify_enabled,
+        event_preset: row.event_preset || "waveoce",
         graphics_images: JSON.parse(row.graphics_images || "[]"),
         matches: JSON.parse(row.matches || "{}"),
     };
@@ -186,12 +188,12 @@ export default {
                 await env.DB.prepare(`
                     INSERT OR IGNORE INTO overlay_data
                     (account_id, timer_duration, timer_start_at, timer_running, timer_ended,
-                     event_name, map, map_video, series_type, games_displayed,
+                     event_name, event_preset, map, map_video, series_type, games_displayed,
                      graphics_enabled, graphics_images, matches, spotify_enabled, updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 `).bind(
                     d.account_id, d.timer_duration, d.timer_start_at, d.timer_running,
-                    d.timer_ended, d.event_name, d.map, d.map_video, d.series_type,
+                    d.timer_ended, d.event_name, d.event_preset, d.map, d.map_video, d.series_type,
                     d.games_displayed, d.graphics_enabled, d.graphics_images,
                     d.matches, d.spotify_enabled, d.updated_at
                 ).run();
@@ -218,15 +220,16 @@ export default {
             await env.DB.prepare(`
                 INSERT INTO overlay_data
                 (account_id, timer_duration, timer_start_at, timer_running, timer_ended,
-                 event_name, map, map_video, series_type, games_displayed,
+                 event_name, event_preset, map, map_video, series_type, games_displayed,
                  graphics_enabled, graphics_images, matches, spotify_enabled, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(account_id) DO UPDATE SET
                     timer_duration    = excluded.timer_duration,
                     timer_start_at    = excluded.timer_start_at,
                     timer_running     = excluded.timer_running,
                     timer_ended       = excluded.timer_ended,
                     event_name        = excluded.event_name,
+                    event_preset      = excluded.event_preset,
                     map               = excluded.map,
                     map_video         = excluded.map_video,
                     series_type       = excluded.series_type,
@@ -243,6 +246,7 @@ export default {
                 body.timer_running ? 1 : 0,
                 body.timer_ended ? 1 : 0,
                 body.event_name ?? "",
+                body.event_preset ?? "waveoce",
                 body.map ?? "none",
                 body.map_video ?? "",
                 body.series_type ?? "BO1",
@@ -320,12 +324,12 @@ export default {
             await env.DB.prepare(`
                 INSERT OR IGNORE INTO overlay_data
                 (account_id, timer_duration, timer_start_at, timer_running, timer_ended,
-                 event_name, map, map_video, series_type, games_displayed,
+                 event_name, event_preset, map, map_video, series_type, games_displayed,
                  graphics_enabled, graphics_images, matches, spotify_enabled, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             `).bind(
                 id, d.timer_duration, d.timer_start_at, d.timer_running, d.timer_ended,
-                d.event_name, d.map, d.map_video, d.series_type, d.games_displayed,
+                d.event_name, d.event_preset, d.map, d.map_video, d.series_type, d.games_displayed,
                 d.graphics_enabled, d.graphics_images, d.matches, d.spotify_enabled, d.updated_at
             ).run();
 
