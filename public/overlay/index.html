@@ -36,6 +36,26 @@ html, body {
     pointer-events: none;
 }
 
+/* ── Tech Pause overlay (Blob only) ── */
+#tech-pause-overlay {
+    position: absolute;
+    top: 254px;
+    left: 100px;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    transform: scale(0.5604, 0.5574);
+    z-index: 16;
+    overflow: hidden;
+    display: none;
+    pointer-events: none;
+}
+#tech-pause-overlay img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 /* ── Map video ── */
 #main-box {
     position: absolute;
@@ -293,9 +313,8 @@ html, body {
 </div>
 
 <!-- Tech Pause overlay (Blob only) -->
-<div id="tech-pause-overlay" style="display:none; position:absolute; inset:0; z-index:50; pointer-events:none;">
-  <img src="https://huds.blob.productions/b6efdc1b-fd5e-48e3-a758-2b30fae94a75/7bcac84c-97aa-4702-ada1-61d9a8cd9dfc?screen=brb"
-    style="width:1920px; height:1080px; object-fit:cover;">
+<div id="tech-pause-overlay">
+  <img src="https://huds.blob.productions/b6efdc1b-fd5e-48e3-a758-2b30fae94a75/7bcac84c-97aa-4702-ada1-61d9a8cd9dfc?screen=brb">
 </div>
 
 <div id="timer-box">
