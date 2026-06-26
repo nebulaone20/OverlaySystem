@@ -563,6 +563,20 @@ document.querySelectorAll(".area-btn").forEach(btn => {
   });
 });
 
+// ── Tech Pause ────────────────────────────────────────────────────────────────
+function updateTechPauseVisibility() {
+  const preset = byid("event-preset")?.value || state.event_preset || "";
+  const card = byid("tech-pause-card");
+  if (card) card.style.display = preset === "blob" ? "" : "none";
+}
+
+function updateTechPauseBtn(active) {
+  const btn = byid("tech-pause-btn");
+  if (!btn) return;
+  btn.textContent = active ? "▶ Clear Tech Pause" : "⏸ Enable Tech Pause";
+  btn.className = active ? "btn wide danger" : "btn wide";
+}
+
 // ── Populate UI from state ────────────────────────────────────────────────────
 function populateUI(s) {
   // Timer
@@ -593,20 +607,6 @@ function populateUI(s) {
   // Event
   byid("event-preset").value    = s.event_preset || "waveoce";
   byid("event-name-input").value = s.event_name  || "";
-
-  // ── Tech Pause ────────────────────────────────────────────────────────────────
-  function updateTechPauseVisibility() {
-    const preset = byid("event-preset")?.value || state.event_preset || "";
-    const card = byid("tech-pause-card");
-    if (card) card.style.display = preset === "blob" ? "" : "none";
-  }
-
-  function updateTechPauseBtn(active) {
-    const btn = byid("tech-pause-btn");
-    if (!btn) return;
-    btn.textContent = active ? "▶ Clear Tech Pause" : "⏸ Enable Tech Pause";
-    btn.className = active ? "btn wide danger" : "btn wide";
-  }
 
   byid("tech-pause-btn").addEventListener("click", () => {
     const existing = state.matches || {};
