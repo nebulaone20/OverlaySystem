@@ -335,7 +335,7 @@ function createGameSections(amount) {
     const bof       = document.getElementById("BOF");
     container.innerHTML = "";
 
-    // Single game — stacked vertical layout
+    // Single game - stacked vertical layout
     if (amount === 1) {
         bof.style.display = "block";
         const section = document.createElement("div");
@@ -373,7 +373,7 @@ function createGameSections(amount) {
         return;
     }
 
-    // Multi-game — horizontal rows
+    // Multi-game - horizontal rows
     bof.style.display = "none";
     for (let i = 1; i <= amount; i++) {
         const section = document.createElement("div");
@@ -556,7 +556,7 @@ async function pollNowPlaying() {
         if (!res.ok || res.status === 204) { el.textContent = ""; return; }
         const data = await res.json();
         if (!data.item) { el.textContent = ""; return; }
-        el.textContent = `${data.item.name} — ${data.item.artists.map(a => a.name).join(", ")}`;
+        el.textContent = `${data.item.name} - ${data.item.artists.map(a => a.name).join(", ")}`;
     } catch { el.textContent = ""; }
 }
 setInterval(pollNowPlaying, 3000);
