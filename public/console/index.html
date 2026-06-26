@@ -194,6 +194,11 @@
           <button class="btn secondary" id="match-reset-toggle">Reset Match State</button>
         </div>
       </div>
+      <div class="card" id="tech-pause-card" style="display:none;">
+        <h3>Tech Pause</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px;">Replaces the overlay with the Blob BRB graphic and shows "Tech Pause" on the timer.</p>
+        <button class="btn wide" id="tech-pause-btn">⏸ Enable Tech Pause</button>
+      </div>
     </section>
 
     <!-- MAP -->
@@ -589,6 +594,28 @@ function populateUI(s) {
   byid("event-preset").value    = s.event_preset || "waveoce";
   byid("event-name-input").value = s.event_name  || "";
 
+  // ── Tech Pause ────────────────────────────────────────────────────────────────
+  function updateTechPauseVisibility() {
+    const preset = byid("event-preset")?.value || state.event_preset || "";
+    const card = byid("tech-pause-card");
+    if (card) card.style.display = preset === "blob" ? "" : "none";
+  }
+
+  function updateTechPauseBtn(active) {
+    const btn = byid("tech-pause-btn");
+    if (!btn) return;
+    btn.textContent = active ? "▶ Clear Tech Pause" : "⏸ Enable Tech Pause";
+    btn.className = active ? "btn wide danger" : "btn wide";
+  }
+
+  byid("tech-pause-btn").addEventListener("click", () => {
+    const existing = state.matches || {};
+    const isActive = !!existing.tech_pause;
+    const newActive = !isActive;
+    saveState({ matches: { ...existing, tech_pause: newActive } });
+    updateTechPauseBtn(newActive);
+  });
+
   // Timeout
   const to = matches.timeout || {};
   byid("timeout-left").value = to.left ?? 2;
@@ -649,6 +676,9 @@ function populateUI(s) {
 
   // Spotify
   byid("spotify-enabled").checked = !!s.spotify_enabled;
+
+  updateTechPauseVisibility();
+  updateTechPauseBtn(!!(s.matches?.tech_pause));
 }
 
 // ── Score Inputs ──────────────────────────────────────────────────────────────
@@ -802,10 +832,11 @@ const presetDefaults = {
 };
 
 byid("event-preset").addEventListener("change", () => {
-    const preset = byid("event-preset").value;
-    if (preset !== "custom") {
-        byid("event-name-input").value = presetDefaults[preset] || "";
-    }
+  const preset = byid("event-preset").value;
+  if (preset !== "custom") {
+    byid("event-name-input").value = presetDefaults[preset] || "";
+  }
+  updateTechPauseVisibility(); // add this line
 });
 
 byid("save-event").addEventListener("click", () => {
