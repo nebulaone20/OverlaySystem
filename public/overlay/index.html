@@ -292,6 +292,12 @@ html, body {
         style="width:100%;height:100%;object-fit:cover;opacity:1;transition:opacity 0.5s ease;">
 </div>
 
+<!-- Tech Pause overlay (Blob only) -->
+<div id="tech-pause-overlay" style="display:none; position:absolute; inset:0; z-index:50; pointer-events:none;">
+  <img src="https://huds.blob.productions/b6efdc1b-fd5e-48e3-a758-2b30fae94a75/7bcac84c-97aa-4702-ada1-61d9a8cd9dfc?screen=brb"
+    style="width:1920px; height:1080px; object-fit:cover;">
+</div>
+
 <div id="timer-box">
     <div id="timer-display">00:00:00</div>
     <div id="timer-event-text">WaveOCE Rising Tides</div>
@@ -438,16 +444,14 @@ function formatHHMMSS(sec) {
 function renderTimer() {
     const el = document.getElementById("timer-display");
     if (!el) return;
+    if (overlayState.matches?.tech_pause) { el.textContent = "Tech Pause"; return; }
     if (matchEnded) { el.textContent = "Ended"; return; }
-
-    const duration  = Number(timerData.duration) || 0;
-    let remaining   = duration;
-
+    const duration = Number(timerData.duration) || 0;
+    let remaining  = duration;
     if (timerData.running && timerData.start_at > 0) {
         const elapsed = Math.floor(Date.now() / 1000) - timerData.start_at;
         remaining = duration - elapsed;
     }
-
     el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "00:00:00";
 }
 
@@ -570,14 +574,17 @@ const brandColors = {
 
 const sponsorSets = {
     road2: [
+        "Road 2 OCE Invitationals logo.png",
         "Road 2 OCE Invitational.png",
-        "Road 2 OCE logo.png",
         "Road 2 OCE logo Single Invitational.png",
     ],
     waveoce: [
         "Rising_Tide_White.png",
         "Wave OCE Logo_white.png",
         "Wave OCE Rising Tides Brandmark Logo_White.png",
+    ],
+    blob: [
+        
     ],
 };
 
@@ -647,7 +654,12 @@ function applyState(s) {
     // Music box visibility
     const musicBox = document.getElementById("music-box");
     if (musicBox) musicBox.style.display = s.spotify_enabled ? "" : "none";
-}
+
+    // Tech pause (Blob only)
+    const techPause = !!(s.matches?.tech_pause);
+    const tpEl = document.getElementById("tech-pause-overlay");
+    if (tpEl) tpEl.style.display = techPause ? "block" : "none";
+    }
 
 // ── Poll D1 every 2s ─────────────────────────────────────────────────────────
 async function pollOverlay() {
