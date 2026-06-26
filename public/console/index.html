@@ -262,9 +262,16 @@
     <section class="panel" id="panel-event">
       <h2>Event Branding</h2>
       <div class="card">
-        <label>Event Name (shown in timer bar)</label>
-        <input type="text" id="event-name-input" placeholder="Road 2 Invitationals - Group Stage - Day 1">
-        <button class="btn wide" id="save-event">Save Event Name</button>
+        <label>Event Preset</label>
+        <select id="event-preset">
+          <option value="waveoce">Wave OCE Rising Tides</option>
+          <option value="road2">Road 2 Invitationals</option>
+          <option value="blob">Blob</option>
+          <option value="custom">Custom</option>
+        </select>
+        <label style="margin-top:10px;">Event Text (timer bar)</label>
+        <input type="text" id="event-name-input" placeholder="e.g. Road 2 Invitationals - Group Stage - Day 1">
+        <button class="btn wide" id="save-event">Save Event</button>
       </div>
     </section>
 
@@ -578,8 +585,9 @@ function populateUI(s) {
   if (!imgs.length) createGraphicInput();
   else { imgs.forEach(u => createGraphicInput(u)); createGraphicInput(); }
 
-  // Event name
-  byid("event-name-input").value = s.event_name || "";
+  // Event
+  byid("event-preset").value    = s.event_preset || "waveoce";
+  byid("event-name-input").value = s.event_name  || "";
 
   // Timeout
   const to = matches.timeout || {};
@@ -787,8 +795,24 @@ byid("save-graphics").addEventListener("click", () => {
 });
 
 // ── Event ─────────────────────────────────────────────────────────────────────
+const presetDefaults = {
+    road2:   "Road 2 Invitationals",
+    waveoce: "WaveOCE Rising Tides",
+    blob:    "Blob",
+};
+
+byid("event-preset").addEventListener("change", () => {
+    const preset = byid("event-preset").value;
+    if (preset !== "custom") {
+        byid("event-name-input").value = presetDefaults[preset] || "";
+    }
+});
+
 byid("save-event").addEventListener("click", () => {
-  saveState({ event_name: byid("event-name-input").value.trim() });
+    saveState({
+        event_name:   byid("event-name-input").value.trim(),
+        event_preset: byid("event-preset").value,
+    });
 });
 
 // ── Timeout ───────────────────────────────────────────────────────────────────
