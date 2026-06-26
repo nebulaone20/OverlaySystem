@@ -50,7 +50,7 @@ html, body {
     display: none;
     pointer-events: none;
 }
-#tech-pause-overlay img {
+#tech-pause-overlay video {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -314,7 +314,9 @@ html, body {
 
 <!-- Tech Pause overlay (Blob only) -->
 <div id="tech-pause-overlay">
-  <img src="https://huds.blob.productions/overlays/val-giblet-3/brb.webm">
+  <video autoplay muted loop playsinline>
+    <source src="brb.webm" type="video/webm">
+  </video>
 </div>
 
 <div id="timer-box">
