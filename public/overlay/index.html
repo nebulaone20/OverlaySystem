@@ -14,21 +14,29 @@ html, body {
     overflow: hidden;
     font-family: Arial;
     position: relative;
-    background: #000;
 }
 
-/* ── Frame graphic sits above video, below all UI ── */
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies.otf") format("opentype");
+    font-weight: normal;
+}
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies bold.otf") format("opentype");
+    font-weight: bold;
+}
+
+/* ── Frame graphic ── */
 #frame-img {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 1920px;
-    height: 1080px;
+    top: 0; left: 0;
+    width: 1920px; height: 1080px;
     z-index: 10;
     pointer-events: none;
 }
 
-/* ── Map video fills the grey box in the frame ── */
+/* ── Map video ── */
 #main-box {
     position: absolute;
     top: 254px;
@@ -36,17 +44,16 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    /* scale to fill grey box: 1076×605 */
-    transform: translateX(-120%) scale(0.5604, 0.5602);
+    transform: translateX(-120%) scale(0.5604, 0.5574);
     transition: transform 0.6s ease;
     overflow: hidden;
-    z-index: 5;
+    z-index: 15;
 }
 #main-box.show {
-    transform: translateX(0) scale(0.5604, 0.5602);
+    transform: translateX(0) scale(0.5604, 0.5574);
 }
 
-/* ── Graphics overlay (same zone as main-box) ── */
+/* ── Graphics overlay ── */
 #graphics-overlay {
     position: absolute;
     top: 254px;
@@ -54,20 +61,20 @@ html, body {
     width: 1920px;
     height: 1080px;
     transform-origin: top left;
-    transform: scale(0.5604, 0.5602);
+    transform: scale(0.5604, 0.5574);
     overflow: hidden;
-    z-index: 15;
+    z-index: 20;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.8s ease;
 }
 
-/* ── Timer — top-left of top bar ── */
+/* ── Timer ── */
 #timer-box {
     position: absolute;
     top: 62px;
     left: 70px;
-    width: 660px;
+    width: 1200px;
     height: 191px;
     overflow: hidden;
     z-index: 20;
@@ -76,31 +83,32 @@ html, body {
 #timer-display {
     position: absolute;
     left: 30px;
-    top: 20px;
+    top: 0px;
     color: #ffffff;
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-weight: 700;
-    font-size: 90px;
-    letter-spacing: 7px;
+    font-family: "Jefferies", Arial, sans-serif;
+    font-weight: 520;
+    font-size: 110px;
+    letter-spacing: 5px;
     pointer-events: none;
 }
 
 #timer-event-text {
     position: absolute;
     left: 30px;
-    bottom: 20px;
+    bottom: 30px;
     color: #ffffff;
-    font-family: "Segoe UI", Arial, sans-serif;
-    font-weight: 700;
-    font-size: 22px;
-    letter-spacing: 2px;
+    font-family: "Jefferies", Arial, sans-serif;
+    font-weight: normal;
+    font-size: 42px;
+    letter-spacing: 0px;
     pointer-events: none;
+    white-space: nowrap;
 }
 
-/* ── Sponsor — top-right of top bar ── */
+/* ── Sponsor ── */
 #sponsor-box {
     position: absolute;
-    top: 62px;
+    top: 48px;
     right: 70px;
     width: 500px;
     height: 191px;
@@ -110,7 +118,6 @@ html, body {
     justify-content: center;
     z-index: 20;
 }
-
 #sponsor-box img {
     position: absolute;
     max-width: 85%;
@@ -120,10 +127,9 @@ html, body {
     transition: opacity 1.5s ease;
 }
 #sponsor-box img.active { opacity: 1; }
-/* Keep .show class no-op so JS doesn't break */
 #sponsor-box.show { right: 70px; }
 
-/* ── Match box — right panel ── */
+/* ── Match box ── */
 #match-box {
     position: absolute;
     top: 254px;
@@ -158,7 +164,7 @@ html, body {
     right: 20px;
     bottom: 0;
     height: 3px;
-    background: rgb(10,105,164);
+    background: var(--brand-color, rgb(10,105,164));
 }
 
 .game-team {
@@ -167,10 +173,7 @@ html, body {
     width: 40%;
     gap: 12px;
 }
-
-.game-team.right {
-    justify-content: flex-end;
-}
+.game-team.right { justify-content: flex-end; }
 
 .game-team-info {
     display: flex;
@@ -240,13 +243,13 @@ html, body {
     z-index: 21;
 }
 
-/* ── Music / now playing — bottom strip (first cell) ── */
+/* ── Music strip ── */
 #music-box {
     position: absolute;
-    bottom: 68px;
-    left: 100px;
-    width: 230px;
-    height: 112px;
+    top: 888px;
+    left: 70px;
+    width: 1780px;
+    height: 130px;
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -265,658 +268,405 @@ html, body {
 #scroll-text {
     position: absolute;
     white-space: nowrap;
-    font-size: 13px;
+    font-size: 28px;
     color: white;
-    animation: scroll 12s linear infinite;
+    animation: marquee 18s linear infinite;
 }
 
-@keyframes scroll { 0% { left: 100%; } 100% { left: -100%; } }
+@keyframes marquee { 0% { left: 100%; } 100% { left: -100%; } }
 </style>
 </head>
-
 <body>
 
-<!-- Frame graphic — sits above video, below UI text -->
 <img id="frame-img" src="Intermission26Frame.png" alt="">
 
-<!-- Map video box -->
 <div id="main-box">
-    <video id="map-video" autoplay muted loop playsinline style="width:100%; height:100%; object-fit:cover;">
+    <video id="map-video" autoplay muted loop playsinline
+        style="width:100%;height:100%;object-fit:cover;">
         <source src="" type="video/mp4">
     </video>
 </div>
 
-<!-- Graphics rotation overlay -->
 <div id="graphics-overlay">
-    <img
-        id="graphics-image"
-        src=""
-        style="width:100%; height:100%; object-fit:cover; opacity:1; transition:opacity 0.5s ease;"
-    />
+    <img id="graphics-image" src=""
+        style="width:100%;height:100%;object-fit:cover;opacity:1;transition:opacity 0.5s ease;">
 </div>
 
-<!-- Timer -->
 <div id="timer-box">
-    <div id="timer-display">Starting</div>
+    <div id="timer-display">00:00:00</div>
     <div id="timer-event-text">WaveOCE Rising Tides</div>
 </div>
 
-<!-- Sponsor logos -->
 <div id="sponsor-box">
-    <img class="sponsor-img active" src="Rising_Tide_White.png" alt="Sponsor">
-    <img class="sponsor-img" src="Wave OCE Logo_white.png" alt="Sponsor">
-    <img class="sponsor-img" src="Wave OCE Rising Tides Brandmark Logo_White.png" alt="Sponsor">
+    <img class="sponsor-img active" src="Rising_Tide_White.png" alt="">
+    <img class="sponsor-img" src="Wave OCE Logo_white.png" alt="">
+    <img class="sponsor-img" src="Wave OCE Rising Tides Brandmark Logo_White.png" alt="">
 </div>
 
-<!-- Match / games panel -->
 <div id="match-box">
     <div id="games-container"></div>
     <div id="BOF">BEST OF</div>
 </div>
 
-<!-- Music / now playing -->
 <div id="music-box">
     <div id="scroll-container">
         <div id="scroll-text"></div>
     </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-
 <script>
+// ── D1 Polling ──────────────────────────────────────────────────────────────
+const accountId = new URLSearchParams(location.search).get("id");
+if (!accountId) {
+    document.body.innerHTML = "<p style='color:red;padding:40px;font-size:32px;'>Missing ?id= in URL</p>";
+}
 
-const firebaseConfig = {
-    apiKey: "AIzaSyCZaiLNBoOtcPPaCupRXAttm0KlV8xuMUw",
-    authDomain: "nebulas-overlay.firebaseapp.com",
-    databaseURL: "https://nebulas-overlay-default-rtdb.firebaseio.com",
-    projectId: "nebulas-overlay",
-    storageBucket: "nebulas-overlay.firebasestorage.app",
-    messagingSenderId: "369414654740",
-    appId: "1:369414654740:web:808bff413fd75084b15001"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let lastUpdatedAt = 0;
+let overlayState  = {};
 
-/* ===================== */
-/* DYNAMIC GAME SECTIONS */
-/* ===================== */
-
+// ── Game Sections ───────────────────────────────────────────────────────────
 let gameAmount = 1;
 
 function createGameSections(amount) {
-
-    amount = Math.max(1, Math.min(4, amount));
-
+    amount = Math.max(1, Math.min(5, amount));
     gameAmount = amount;
 
     const container = document.getElementById("games-container");
-    const bof = document.getElementById("BOF");
-
+    const bof       = document.getElementById("BOF");
     container.innerHTML = "";
 
-    // =========================
-    // SINGLE GAME = OLD LAYOUT
-    // =========================
+    // Single game — stacked vertical layout
     if (amount === 1) {
-
         bof.style.display = "block";
-
         const section = document.createElement("div");
         section.className = "game-section";
-
         section.innerHTML = `
-            <div style="
-                position:absolute;
-                top:80px;
-                left:50%;
-                transform:translateX(-50%);
-                width:210px;
-                height:210px;
-                background-size:contain;
-                background-repeat:no-repeat;
-                background-position:center;
-            " id="logo-top-1"></div>
+            <div style="position:absolute;top:80px;left:50%;transform:translateX(-50%);
+                width:210px;height:210px;background-size:contain;background-repeat:no-repeat;
+                background-position:center;" id="logo-top-1"></div>
 
-            <div style="
-                position:absolute;
-                top:580px;
-                left:50%;
-                transform:translateX(-50%);
-                width:210px;
-                height:210px;
-                background-size:contain;
-                background-repeat:no-repeat;
-                background-position:center;
-            " id="logo-bottom-1"></div>
+            <div style="position:absolute;top:580px;left:50%;transform:translateX(-50%);
+                width:210px;height:210px;background-size:contain;background-repeat:no-repeat;
+                background-position:center;" id="logo-bottom-1"></div>
 
-            <div style="
-                position:absolute;
-                top:360px;
-                left:50%;
-                transform:translateX(-50%);
-                color:white;
-                font-size:18px;
-                font-weight:bold;
-            " id="tag-top-1">[TOP]</div>
+            <div style="position:absolute;top:360px;left:50%;transform:translateX(-50%);
+                color:white;font-size:18px;font-weight:bold;" id="tag-top-1">[TOP]</div>
 
-            <div style="
-                position:absolute;
-                top:495px;
-                left:50%;
-                transform:translateX(-50%);
-                color:white;
-                font-size:18px;
-                font-weight:bold;
-            " id="tag-bottom-1">[BOT]</div>
+            <div style="position:absolute;top:495px;left:50%;transform:translateX(-50%);
+                color:white;font-size:18px;font-weight:bold;" id="tag-bottom-1">[BOT]</div>
 
-            <div style="
-                position:absolute;
-                top:401px;
-                left:50%;
-                transform:translateX(-50%);
-                color:white;
-                font-size:60px;
-                font-weight:bold;
-            ">VS</div>
+            <div style="position:absolute;top:401px;left:50%;transform:translateX(-50%);
+                color:white;font-size:60px;font-weight:bold;">VS</div>
 
-            <div style="
-                position:absolute;
-                top:397px;
-                left:32%;
-                transform:translateX(-50%);
-                color:white;
-                font-size:65px;
-                font-weight:bold;
-            " id="score-left-1">0</div>
+            <div style="position:absolute;top:397px;left:32%;transform:translateX(-50%);
+                color:white;font-size:65px;font-weight:bold;" id="score-left-1">0</div>
 
-            <div style="
-                position:absolute;
-                top:397px;
-                left:68%;
-                transform:translateX(-50%);
-                color:white;
-                font-size:65px;
-                font-weight:bold;
-            " id="score-right-1">0</div>
+            <div style="position:absolute;top:397px;left:68%;transform:translateX(-50%);
+                color:white;font-size:65px;font-weight:bold;" id="score-right-1">0</div>
 
-            <div style="
-                position:absolute;
-                left:35px;
-                top:435px;
-                width:90px;
-                height:5px;
-                background:rgb(10,105,164);
-            "></div>
-
-            <div style="
-                position:absolute;
-                right:35px;
-                top:435px;
-                width:90px;
-                height:5px;
-                background:rgb(10,105,164);
-            "></div>
+            <div style="position:absolute;left:35px;top:435px;width:90px;height:5px;
+                background:var(--brand-color,rgb(10,105,164));"></div>
+            <div style="position:absolute;right:35px;top:435px;width:90px;height:5px;
+                background:var(--brand-color,rgb(10,105,164));"></div>
         `;
-
         container.appendChild(section);
-
-        updateAllGameData();
         return;
     }
 
-    // =========================
-    // MULTI GAME LAYOUT
-    // =========================
-
+    // Multi-game — horizontal rows
     bof.style.display = "none";
-
     for (let i = 1; i <= amount; i++) {
-
         const section = document.createElement("div");
         section.className = "game-section";
-
         section.innerHTML = `
             <div class="game-team left">
-
                 <div class="game-team-info">
                     <div class="game-logo" id="logo-top-${i}"></div>
-                    <div class="game-tag" id="tag-top-${i}">[TOP]</div>
+                    <div class="game-tag"  id="tag-top-${i}">[TOP]</div>
                 </div>
-
                 <div class="game-score" id="score-left-${i}">0</div>
             </div>
-
             <div class="game-vs">VS</div>
-
             <div class="game-team right">
-
                 <div class="game-score" id="score-right-${i}">0</div>
-
                 <div class="game-team-info">
                     <div class="game-logo" id="logo-bottom-${i}"></div>
-                    <div class="game-tag" id="tag-bottom-${i}">[BOT]</div>
+                    <div class="game-tag"  id="tag-bottom-${i}">[BOT]</div>
                 </div>
-
             </div>
-
             <div class="game-label">GAME ${i}</div>
-
             ${i < amount ? '<div class="game-separator"></div>' : ''}
         `;
-
         container.appendChild(section);
     }
-
-    updateAllGameData();
 }
 
-function updateAllGameData() {
-    db.ref("intermission/matches/matches").once("value").then(snap => {
-        const matches = snap.val() || {};
+function updateAllGameData(matches) {
+    matches = matches || {};
+    for (let i = 1; i <= gameAmount; i++) {
+        const m = matches[`game${i}`] || {};
 
-        for (let i = 1; i <= gameAmount; i++) {
-            const match = matches[`game${i}`] || {};
+        const logoTop    = document.getElementById(`logo-top-${i}`);
+        const logoBottom = document.getElementById(`logo-bottom-${i}`);
+        const tagTop     = document.getElementById(`tag-top-${i}`);
+        const tagBottom  = document.getElementById(`tag-bottom-${i}`);
+        const scoreL     = document.getElementById(`score-left-${i}`);
+        const scoreR     = document.getElementById(`score-right-${i}`);
 
-            const topLogoEl = document.getElementById(`logo-top-${i}`);
-            const bottomLogoEl = document.getElementById(`logo-bottom-${i}`);
-            if (topLogoEl) topLogoEl.style.backgroundImage = match.left_logo ? `url(${match.left_logo})` : "";
-            if (bottomLogoEl) bottomLogoEl.style.backgroundImage = match.right_logo ? `url(${match.right_logo})` : "";
-
-            const topTag = document.getElementById(`tag-top-${i}`);
-            const bottomTag = document.getElementById(`tag-bottom-${i}`);
-            if (topTag) topTag.textContent = match.left_tri?.trim() || match.left_tag?.trim() || "[TOP]";
-            if (bottomTag) bottomTag.textContent = match.right_tri?.trim() || match.right_tag?.trim() || "[BOT]";
-
-            const leftScore = document.getElementById(`score-left-${i}`);
-            const rightScore = document.getElementById(`score-right-${i}`);
-            if (leftScore) leftScore.textContent = match.left_score ?? 0;
-            if (rightScore) rightScore.textContent = match.right_score ?? 0;
-        }
-    });
+        if (logoTop)    logoTop.style.backgroundImage    = m.left_logo  ? `url(${m.left_logo})`  : "";
+        if (logoBottom) logoBottom.style.backgroundImage = m.right_logo ? `url(${m.right_logo})` : "";
+        if (tagTop)     tagTop.textContent    = m.left_tri?.trim()  || m.left_tag?.trim()  || "[TOP]";
+        if (tagBottom)  tagBottom.textContent = m.right_tri?.trim() || m.right_tag?.trim() || "[BOT]";
+        if (scoreL)     scoreL.textContent    = m.left_score  ?? 0;
+        if (scoreR)     scoreR.textContent    = m.right_score ?? 0;
+    }
 }
 
-// Listen for match config changes
-db.ref("intermission/matches").on("value", snap => {
-
-    const data = snap.val() || {};
-
-    gameAmount =
-        Number(data.games_displayed) ||
-        Number(data.amount) ||
-        1;
-
-    createGameSections(gameAmount);
-});
-
-db.ref("intermission/matches/matches").on("value", snap => {
-    updateAllGameData();
-});
-
-/* ===================== */
-/* TIMER LOGIC           */
-/* ===================== */
+// ── Timer ───────────────────────────────────────────────────────────────────
 let timerInterval = null;
-let timerData = { duration: 0, start_at: 0, running: false };
-let matchEnded = false;
+let timerData     = { duration: 0, start_at: 0, running: false };
+let matchEnded    = false;
 
-function clamp(sec) {
-    const max = (99 * 3600) + (59 * 60) + 59;
-    return Math.min(Math.max(0, Math.floor(sec)), max);
-}
 function formatHHMMSS(sec) {
-    sec = clamp(sec);
+    sec = Math.min(Math.max(0, Math.floor(sec)), 359999);
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-function normalizeTimestamp(value) {
-    const num = Number(value) || 0;
-    if (num > 1e12) return num;
-    if (num > 0) return num * 1000;
-    return 0;
+    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
 }
 
-db.ref("intermission/state").on("value", snap => {
-    const v = snap.val() || {};
-    matchEnded = !!v.ended;
-    renderTimer();
-});
 function renderTimer() {
-    const timerDisplay = document.getElementById("timer-display");
-    if (!timerDisplay) return;
+    const el = document.getElementById("timer-display");
+    if (!el) return;
+    if (matchEnded) { el.textContent = "Ended"; return; }
 
-    if (matchEnded) {
-        timerDisplay.textContent = "Ended";
-        return;
+    const duration  = Number(timerData.duration) || 0;
+    let remaining   = duration;
+
+    if (timerData.running && timerData.start_at > 0) {
+        const elapsed = Math.floor(Date.now() / 1000) - timerData.start_at;
+        remaining = duration - elapsed;
     }
 
-    const duration = Number(timerData.duration) || 0;
-    let remaining = duration;
-
-    if (timerData.running) {
-        const startAtMs = normalizeTimestamp(timerData.start_at);
-        if (startAtMs > 0) {
-            const elapsed = Math.floor((Date.now() - startAtMs) / 1000);
-            remaining = duration - elapsed;
-        }
-    }
-
-    if (remaining <= 0) {
-        timerDisplay.textContent = "Starting";
-        return;
-    }
-
-    timerDisplay.textContent = formatHHMMSS(remaining);
+    el.textContent = remaining > 0 ? formatHHMMSS(remaining) : "00:00:00";
 }
+
 function startRenderLoop() {
-    if (timerInterval) {
-        clearInterval(timerInterval);
-    }
+    if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(renderTimer, 500);
 }
 
-db.ref("intermission/timer").on("value", snap => {
-    const v = snap.val() || {};
-    timerData.duration = Number(v.duration) || 0;
-    timerData.start_at = Number(v.start_at) || 0;
-    timerData.running = !!v.running;
-    renderTimer();
+// ── Map ─────────────────────────────────────────────────────────────────────
+let currentMapVideo = "";
 
-    if (timerData.running) {
-        startRenderLoop();
-    } else if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-    }
-});
-
-db.ref("intermission/map").on("value", snap => {
-    const data = snap.val();
-
-    const mainBox = document.getElementById("main-box");
+function applyMap(map, videoUrl) {
+    const mainBox  = document.getElementById("main-box");
     const mapVideo = document.getElementById("map-video");
 
-    // NONE → slide out immediately
-    if (!data || !data.map || data.map.toLowerCase() === "none") {
+    if (!map || map === "none" || !videoUrl) {
         mainBox.classList.remove("show");
-
-        setTimeout(() => {
-            mapVideo.pause();
-            mapVideo.removeAttribute("src");    
-            mapVideo.load();
-        }, 600);
-
+        setTimeout(() => { mapVideo.pause(); mapVideo.removeAttribute("src"); mapVideo.load(); }, 600);
         return;
     }
+    if (videoUrl === currentMapVideo) return;
+    currentMapVideo = videoUrl;
 
-    // ALWAYS reload (fix cross-browser sync)
     mainBox.classList.remove("show");
-
-    const videoUrl = data.video + "?t=" + Date.now(); // cache bust
-
     mapVideo.pause();
-    mapVideo.src = videoUrl;
+    mapVideo.src = videoUrl + "?t=" + Date.now();
     mapVideo.load();
 
     const onReady = () => {
         mapVideo.removeEventListener("canplaythrough", onReady);
-
-        mapVideo.play().catch(()=>{});
+        mapVideo.play().catch(() => {});
         mainBox.classList.add("show");
     };
-
     mapVideo.addEventListener("canplaythrough", onReady);
-});
+}
 
-/* ===================== */
-/* GRAPHICS ROTATION     */
-/* ===================== */
-
-let graphicsData = {
-    enabled: false,
-    images: []
-};
-
+// ── Graphics Rotation ────────────────────────────────────────────────────────
+let graphicsData  = { enabled: false, images: [] };
 let graphicsIndex = 0;
-let graphicsVisible = false;
-
-const graphicsOverlay =
-    document.getElementById("graphics-overlay");
-
-const graphicsImage =
-    document.getElementById("graphics-image");
+const graphicsOverlay = document.getElementById("graphics-overlay");
+const graphicsImage   = document.getElementById("graphics-image");
 
 async function showGraphic(index) {
-
-    if (!graphicsData.images[index]) {
-        return;
-    }
-
-    const newSrc = graphicsData.images[index];
-
-    // Fade current image out first
+    if (!graphicsData.images[index]) return;
     graphicsImage.style.opacity = "0";
-
     await new Promise(r => setTimeout(r, 500));
-
-    graphicsImage.src = newSrc;
-
-    // Wait for image load
-    await new Promise(resolve => {
-
-        graphicsImage.onload = resolve;
-        graphicsImage.onerror = resolve;
-
-    });
-
-    // Show overlay
-    graphicsOverlay.style.display = "block";
-
-    // Trigger fade in
-    requestAnimationFrame(() => {
-
-        graphicsOverlay.style.opacity = "1";
-        graphicsImage.style.opacity = "1";
-
-    });
-
-    document.getElementById("main-box")
-        .classList.remove("show");
-
-    graphicsVisible = true;
+    graphicsImage.src = graphicsData.images[index];
+    await new Promise(r => { graphicsImage.onload = r; graphicsImage.onerror = r; });
+    graphicsOverlay.style.opacity = "1";
+    graphicsImage.style.opacity   = "1";
+    document.getElementById("main-box").classList.remove("show");
 }
 
 function hideGraphic(restoreMap = true) {
-
     graphicsOverlay.style.opacity = "0";
-
-    setTimeout(() => {
-        graphicsOverlay.style.display = "none";
-    }, 800);
-
-    graphicsVisible = false;
-
-    if (!restoreMap) return;
-
-    db.ref("intermission/map")
-    .once("value")
-    .then(snap => {
-        const data = snap.val();
-        if (data && data.map && data.map.toLowerCase() !== "none") {
-            document.getElementById("main-box").classList.add("show");
-        }
-    });
+    if (restoreMap && currentMapVideo) {
+        document.getElementById("main-box").classList.add("show");
+    }
 }
 
 async function runGraphicsLoop() {
     while (true) {
-
-        if (!graphicsData.enabled || graphicsData.images.length === 0) {
+        if (!graphicsData.enabled || !graphicsData.images.length) {
             hideGraphic(true);
             await new Promise(r => setTimeout(r, 2000));
             continue;
         }
-
         await showGraphic(graphicsIndex);
-
         await new Promise(r => setTimeout(r, 15000));
-
         graphicsIndex++;
         const cycleComplete = graphicsIndex >= graphicsData.images.length;
-
-        // Only restore map after the full cycle, not between graphics
         hideGraphic(cycleComplete);
-
         await new Promise(r => setTimeout(r, 1000));
-
         if (cycleComplete) {
             graphicsIndex = 0;
             await new Promise(r => setTimeout(r, 90000));
         }
     }
 }
+setTimeout(runGraphicsLoop, 3000);
 
-setTimeout(() => {
-    runGraphicsLoop();
-}, 3000);
-
-// Firebase sync
-db.ref("intermission/graphics")
-.on("value", snap => {
-
-    const data = snap.val() || {};
-
-    graphicsData.enabled =
-        !!data.enabled;
-
-    graphicsData.images =
-        Object.values(data.images || {})
-            .filter(url =>
-                typeof url === "string" &&
-                url.trim() !== ""
-            );
-
-    // Reset index if out of bounds
-    if (graphicsIndex >= graphicsData.images.length) {
-        graphicsIndex = 0;
-    }
-
-    // Hide instantly if disabled
-    if (
-        !graphicsData.enabled ||
-        graphicsData.images.length === 0
-    ) {
-        hideGraphic();
-    }
-});
-
-db.ref("intermission/series").on("value", snap => {
-    const v = snap.val() || {};
-    const type = v.type || "";
-
-    const bofEl = document.getElementById("BOF");
-
-    if (!type) {
-        bofEl.textContent = "BEST OF";
-        return;
-    }
-
-    // Extract number from BO1 / BO3 / BO5
-    const num = type.replace("BO", "");
-
-    bofEl.textContent = `BEST OF ${num}`;
-});
-renderTimer();
-
-/* ===================== */
-/* SPONSOR BOX            */
-/* ===================== */
-// Sponsor is always visible (no slide animation in 2026 layout)
-
-/* ===================== */
-/* SPOTIFY LOGIC         */
-/* ===================== */
-let spotifyToken = localStorage.getItem("spotify_access_token");
-async function pollNowPlaying() {
-    spotifyToken = localStorage.getItem("spotify_access_token");
-    const el = document.getElementById("scroll-text");
-    if(!spotifyToken){ el.textContent="Not connected"; return; }
-    try{
-        const url = "https://api.spotify.com/v1/me/player/currently-playing";
-        console.log("Fetching:", url);
-        const res = await fetch(url,{ headers:{ Authorization:"Bearer "+spotifyToken } });
-        if(!res.ok || res.status===204){ el.textContent="Not playing"; return; }
-        const data = await res.json();
-        if(!data.item){ el.textContent="Not playing"; return; }
-        el.textContent = `${data.item.name} — ${data.item.artists.map(a=>a.name).join(", ")}`;
-    }catch{ el.textContent="Not playing"; }
+// ── Sponsor Rotation ─────────────────────────────────────────────────────────
+let sponsorInterval = null;
+function startSponsorRotation() {
+    const imgs = document.querySelectorAll("#sponsor-box .sponsor-img");
+    if (!imgs.length) return;
+    let i = 0;
+    if (sponsorInterval) clearInterval(sponsorInterval);
+    sponsorInterval = setInterval(() => {
+        imgs[i].classList.remove("active");
+        i = (i + 1) % imgs.length;
+        imgs[i].classList.add("active");
+    }, 10000);
 }
-setInterval(pollNowPlaying,3000);
+startSponsorRotation();
+
+// ── Spotify ──────────────────────────────────────────────────────────────────
+async function pollNowPlaying() {
+    const spotToken = localStorage.getItem("spotify_access_token");
+    const el = document.getElementById("scroll-text");
+    if (!spotToken) { el.textContent = ""; return; }
+    try {
+        const res = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+            headers: { Authorization: "Bearer " + spotToken }
+        });
+        if (!res.ok || res.status === 204) { el.textContent = ""; return; }
+        const data = await res.json();
+        if (!data.item) { el.textContent = ""; return; }
+        el.textContent = `${data.item.name} — ${data.item.artists.map(a => a.name).join(", ")}`;
+    } catch { el.textContent = ""; }
+}
+setInterval(pollNowPlaying, 3000);
 pollNowPlaying();
 
-/* ===================== */
-/* EVENT (Road2 / WaveOCE) */
-/* ===================== */
-db.ref("intermission/event").on("value", snap => {
-    const v = snap.val() || {};
-    const eventName = v.name || "";
+// ── applyState ───────────────────────────────────────────────────────────────
+const brandColors = {
+    road2:   "rgb(120, 40, 180)",
+    waveoce: "rgb(10, 105, 164)",
+};
 
+const sponsorSets = {
+    road2: [
+        "Road_2_OCE_Invitational.png",
+        "Road_2_OCE_logo.png",
+        "Road_2_OCE_logo_Single_Invitational.png",
+    ],
+    waveoce: [
+        "Rising_Tide_White.png",
+        "Wave OCE Logo_white.png",
+        "Wave OCE Rising Tides Brandmark Logo_White.png",
+    ],
+};
+
+function applyState(s) {
+    // Timer
+    matchEnded          = !!s.timer_ended;
+    timerData.duration  = s.timer_duration || 0;
+    timerData.start_at  = s.timer_start_at || 0;
+    timerData.running   = !!s.timer_running;
+    renderTimer();
+    if (timerData.running) startRenderLoop();
+    else if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+
+    // Event text
+    const eventEl = document.getElementById("timer-event-text");
+    if (eventEl) eventEl.textContent = s.event_name || "";
+
+    // Brand color
+    const preset = s.event_preset || "waveoce";
+    document.documentElement.style.setProperty(
+        "--brand-color",
+        brandColors[preset] || brandColors.waveoce
+    );
+
+    // Sponsors
+    const imgs = sponsorSets[preset] || sponsorSets.waveoce;
     const sponsorBox = document.getElementById("sponsor-box");
-    const timerEventText = document.getElementById("timer-event-text");
-
     sponsorBox.innerHTML = "";
-
-    let images = [];
-    let text = "";
-
-    if (eventName === "waveoce") {
-        images = [
-            "Rising_Tide_White.png",
-            "Wave OCE Logo_white.png",
-            "Wave OCE Rising Tides Brandmark Logo_White.png"
-        ];
-        text = "WaveOCE Rising Tides Split 2";
-    } 
-    else if (eventName === "road2") {
-        images = [
-            "Road 2 OCE Invitationals logo.png",
-            "Road 2 OCE Invitational.png",
-            "Road 2 OCE logo Single Invitational.png"
-        ];
-        text = "Road 2 Invitationals";
-    } 
-    else {
-        // fallback (optional)
-        images = [];
-        text = "";
-    }
-
-    // Update timer text
-    timerEventText.textContent = text;
-
-    // Rebuild sponsor images
-    images.forEach((src, index) => {
+    imgs.forEach((src, i) => {
         const img = document.createElement("img");
         img.src = src;
-        img.className = "sponsor-img" + (index === 0 ? " active" : "");
+        img.className = "sponsor-img" + (i === 0 ? " active" : "");
         sponsorBox.appendChild(img);
     });
+    startSponsorRotation();
 
-    // Restart rotation logic
-    let sponsorImages = document.querySelectorAll("#sponsor-box .sponsor-img");
-    let sponsorIndex = 0;
+    // Map
+    applyMap(s.map, s.map_video);
 
-    if (sponsorImages.length > 0) {
-        setInterval(() => {
-            sponsorImages[sponsorIndex].classList.remove("active");
-            sponsorIndex = (sponsorIndex + 1) % sponsorImages.length;
-            sponsorImages[sponsorIndex].classList.add("active");
-        }, 10000);
+    // Matches
+    const matches = s.matches || {};
+    const amount  = matches.games_displayed || matches.amount || 1;
+    if (amount !== gameAmount) {
+        gameAmount = amount;
+        createGameSections(gameAmount);
     }
-});
-</script>
+    updateAllGameData(matches.matches || {});
 
+    // BOF label
+    const bofEl = document.getElementById("BOF");
+    if (bofEl) {
+        const num = (s.series_type || "").replace("BO", "");
+        bofEl.textContent = num ? `BEST OF ${num}` : "BEST OF";
+    }
+
+    // Graphics
+    const newImages = Array.isArray(s.graphics_images) ? s.graphics_images : [];
+    const changed   = JSON.stringify(newImages) !== JSON.stringify(graphicsData.images);
+    graphicsData.enabled = !!s.graphics_enabled;
+    graphicsData.images  = newImages;
+    if (changed && graphicsIndex >= graphicsData.images.length) graphicsIndex = 0;
+    if (!graphicsData.enabled || !graphicsData.images.length) hideGraphic(!!currentMapVideo);
+
+    // Spotify token from D1 (works in OBS)
+    if (s.spotify_token) localStorage.setItem("spotify_access_token", s.spotify_token);
+
+    // Music box visibility
+    const musicBox = document.getElementById("music-box");
+    if (musicBox) musicBox.style.display = s.spotify_enabled ? "" : "none";
+}
+
+// ── Poll D1 every 2s ─────────────────────────────────────────────────────────
+async function pollOverlay() {
+    try {
+        const res = await fetch(`/api/overlay/${accountId}`);
+        if (!res.ok) return;
+        const s = await res.json();
+        if (s.updated_at !== lastUpdatedAt) {
+            lastUpdatedAt = s.updated_at;
+            overlayState  = s;
+            applyState(s);
+        }
+    } catch (e) {
+        console.warn("Poll error:", e);
+    }
+}
+
+pollOverlay();
+setInterval(pollOverlay, 2000);
+</script>
 </body>
 </html>
