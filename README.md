@@ -76,11 +76,18 @@ This is where you control the overlay. Each section is in the left sidebar.
 - Click **Save Timeout**
 
 ### Camera
+Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudflare.com/realtime/sfu/) (Cloudflare's own WebRTC infrastructure) instead of a third-party service — nothing leaves your Cloudflare account.
+
 - Set the camera layout (Duo, Solo, None)
-- Click **Generate VDO Link** to create a VDO.Ninja push link - it copies to your clipboard automatically, send it to the player
-- Paste the view URL into the URL field
-- Adjust gain and compressor levels per camera
-- Click **Save Camera Config**
+- Click **Copy** next to a camera's **Push Link** and send it to that caster. It's a stable URL (`/cam/push.html?slot=left&id=ACCOUNT_ID`) — no need to regenerate it.
+- The caster opens the link, grants camera/mic access, and stays live as long as the tab is open. A 🟢/⚪ badge on each camera card shows whether they're currently connected.
+- Adjust **Mic Gain** and **Compressor** — these update live on the caster's page via the Web Audio API, no reload needed.
+- **Noise Suppression / Echo Cancellation / Auto Gain Control / Audio Bitrate** are applied when the caster's page loads (they need to refresh their push link to pick up changes).
+- Volume/Panning/Mute (under "Real-time controls") apply on the overlay side and update instantly.
+
+**Setup (one-time, for the site operator):** create a Calls App in the Cloudflare dashboard under Realtime → SFU, put its App ID in `wrangler.toml` as `CALLS_APP_ID`, and set the App Secret with `wrangler secret put CALLS_APP_SECRET`. See `migrate-calls.sql` if you're adding this to an existing deployment.
+
+Optional but recommended: create a TURN key under Realtime → TURN, set its ID as `TURN_KEY_ID` in `wrangler.toml`, and its API token with `wrangler secret put TURN_KEY_API_TOKEN`. Without this, casters fall back to STUN-only, which can fail behind symmetric NAT or locked-down corporate/venue networks.
 
 ### Spotify
 - Check **Show Now Playing** to display the current song on the overlay
