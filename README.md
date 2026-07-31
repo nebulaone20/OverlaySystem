@@ -76,12 +76,12 @@ This is where you control the overlay. Each section is in the left sidebar.
 - Click **Save Timeout**
 
 ### Camera
-Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudflare.com/realtime/sfu/) (Cloudflare's own WebRTC infrastructure) instead of a third-party service — nothing leaves your Cloudflare account.
+Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudflare.com/realtime/sfu/) (Cloudflare's own WebRTC infrastructure) instead of a third-party service - nothing leaves your Cloudflare account.
 
 - Set the camera layout (Duo, Solo, None)
-- Click **Copy** next to a camera's **Push Link** and send it to that caster. It's a stable URL (`/cam/push.html?slot=left&id=ACCOUNT_ID`) — no need to regenerate it.
+- Click **Copy** next to a camera's **Push Link** and send it to that caster. It's a stable URL (`/cam/push.html?slot=left&id=ACCOUNT_ID`) - no need to regenerate it.
 - The caster opens the link, grants camera/mic access, and stays live as long as the tab is open. A 🟢/⚪ badge on each camera card shows whether they're currently connected.
-- Adjust **Mic Gain** and **Compressor** — these update live on the caster's page via the Web Audio API, no reload needed.
+- Adjust **Mic Gain** and **Compressor** - these update live on the caster's page via the Web Audio API, no reload needed.
 - **Noise Suppression / Echo Cancellation / Auto Gain Control / Audio Bitrate** are applied when the caster's page loads (they need to refresh their push link to pick up changes).
 - Volume/Panning/Mute (under "Real-time controls") apply on the overlay side and update instantly.
 
