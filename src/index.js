@@ -11,6 +11,14 @@
 //   POST   /api/admin/accounts              (admin only - create account)
 //   DELETE /api/admin/accounts/:id          (admin only)
 //   PUT    /api/admin/accounts/:id/password (admin only)
+//   GET    /api/calls/ice-servers                       (TURN creds, or STUN fallback)
+//   POST   /api/calls/session                          (Cloudflare Calls proxy)
+//   POST   /api/calls/session/:sessionId/tracks         (Cloudflare Calls proxy)
+//   PUT    /api/calls/session/:sessionId/renegotiate    (Cloudflare Calls proxy)
+//   PUT    /api/calls/session/:sessionId/tracks/close   (Cloudflare Calls proxy)
+//   PUT    /api/camera/:accountId/:slot     (push.html registers/heartbeats)
+//   GET    /api/camera/:accountId/:slot     (pull.html polls for current track)
+//   DELETE /api/camera/:accountId/:slot     (push.html unload - best effort)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CORS = {
@@ -53,6 +61,53 @@ function generateId(length = 32) {
     const arr = new Uint8Array(length);
     crypto.getRandomValues(arr);
     return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+// ── Cloudflare Calls (Realtime SFU) proxy ──────────────────────────────────
+// The push/pull pages talk to these instead of the Calls API directly, so
+// CALLS_APP_SECRET never touches the browser. Track/session IDs themselves
+// aren't secret (per Cloudflare's own docs), just the App Secret is.
+const CALLS_API_BASE = "https://rtc.live.cloudflare.com/v1";
+
+async function callsFetch(env, path, { method = "GET", body } = {}) {
+    if (!env.CALLS_APP_ID || !env.CALLS_APP_SECRET) {
+        return { ok: false, status: 500, data: { error: "Calls app not configured on the server (CALLS_APP_ID / CALLS_APP_SECRET)" } };
+    }
+    const res = await fetch(`${CALLS_API_BASE}/apps/${env.CALLS_APP_ID}${path}`, {
+        method,
+        headers: {
+            Authorization: `Bearer ${env.CALLS_APP_SECRET}`,
+            "Content-Type": "application/json",
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    let data = {};
+    try { data = await res.json(); } catch { /* empty body */ }
+    return { ok: res.ok, status: res.status, data };
+}
+
+// Cloudflare TURN service uses a *separate* key pair from the Calls App
+// (TURN_KEY_ID / TURN_KEY_API_TOKEN), not the app secret above.
+async function fetchIceServers(env) {
+    const fallback = { iceServers: [{ urls: ["stun:stun.cloudflare.com:3478", "stun:stun.cloudflare.com:53"] }] };
+    if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return fallback;
+    try {
+        const res = await fetch(
+            `${CALLS_API_BASE}/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`,
+            {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ttl: 3600 }),
+            }
+        );
+        if (!res.ok) return fallback;
+        return await res.json();
+    } catch {
+        return fallback;
+    }
 }
 
 // ── Session helpers ───────────────────────────────────────────────────────────
@@ -371,6 +426,97 @@ export default {
             await env.DB.prepare(
                 "UPDATE overlay_data SET spotify_token = ?, updated_at = ? WHERE account_id = ?"
             ).bind(token || "", Math.floor(Date.now() / 1000), accountId).run();
+            return json({ ok: true });
+        }
+
+        // ── GET /api/calls/ice-servers ────────────────────────────────────────
+        // Short-lived TURN credentials (1hr TTL) if TURN is configured, else
+        // STUN-only fallback. push.html/pull.html fetch this once per session.
+        if (pathname === "/api/calls/ice-servers" && method === "GET") {
+            return json(await fetchIceServers(env));
+        }
+
+        // ── POST /api/calls/session ───────────────────────────────────────────
+        // Creates a bare Cloudflare Calls session (no SDP exchange yet).
+        if (pathname === "/api/calls/session" && method === "POST") {
+            const { ok, status, data } = await callsFetch(env, "/sessions/new", { method: "POST", body: {} });
+            return json(data, ok ? 200 : status);
+        }
+
+        // ── POST /api/calls/session/:sessionId/tracks ─────────────────────────
+        // Push: body = { sessionDescription, tracks: [{location:'local', mid, trackName}] }
+        // Pull: body = { tracks: [{location:'remote', sessionId, trackName}] }
+        const callsTracksMatch = pathname.match(/^\/api\/calls\/session\/([^/]+)\/tracks$/);
+        if (callsTracksMatch && method === "POST") {
+            const body = await request.json();
+            const { ok, status, data } = await callsFetch(
+                env, `/sessions/${callsTracksMatch[1]}/tracks/new`, { method: "POST", body }
+            );
+            return json(data, ok ? 200 : status);
+        }
+
+        // ── PUT /api/calls/session/:sessionId/renegotiate ─────────────────────
+        const callsRenegMatch = pathname.match(/^\/api\/calls\/session\/([^/]+)\/renegotiate$/);
+        if (callsRenegMatch && method === "PUT") {
+            const body = await request.json();
+            const { ok, status, data } = await callsFetch(
+                env, `/sessions/${callsRenegMatch[1]}/renegotiate`, { method: "PUT", body }
+            );
+            return json(data, ok ? 200 : status);
+        }
+
+        // ── PUT /api/calls/session/:sessionId/tracks/close ────────────────────
+        const callsCloseMatch = pathname.match(/^\/api\/calls\/session\/([^/]+)\/tracks\/close$/);
+        if (callsCloseMatch && method === "PUT") {
+            const body = await request.json().catch(() => ({}));
+            const { ok, status, data } = await callsFetch(
+                env, `/sessions/${callsCloseMatch[1]}/tracks/close`, { method: "PUT", body }
+            );
+            return json(data, ok ? 200 : status);
+        }
+
+        // ── PUT /api/camera/:accountId/:slot ──────────────────────────────────
+        // Caster's push.html registers/heartbeats its current Calls session here.
+        // No login required - same trust model as the public overlay poll endpoint;
+        // the accountId itself is the capability (mirrors the old VDO push-link design).
+        const cameraPutMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        if (cameraPutMatch && method === "PUT") {
+            const [, accountId, slot] = cameraPutMatch;
+            const { sessionId, videoTrack, audioTrack } = await request.json();
+            if (!sessionId) return err("Missing sessionId");
+            const now = Math.floor(Date.now() / 1000);
+            await env.DB.prepare(`
+                INSERT INTO camera_sessions (account_id, slot, session_id, video_track, audio_track, updated_at)
+                VALUES (?,?,?,?,?,?)
+                ON CONFLICT(account_id, slot) DO UPDATE SET
+                    session_id  = excluded.session_id,
+                    video_track = excluded.video_track,
+                    audio_track = excluded.audio_track,
+                    updated_at  = excluded.updated_at
+            `).bind(accountId, slot, sessionId, videoTrack || "", audioTrack || "", now).run();
+            return json({ ok: true, updated_at: now });
+        }
+
+        // ── GET /api/camera/:accountId/:slot ──────────────────────────────────
+        // pull.html polls this to find out what to pull (and whether the caster
+        // is still alive - anything older than ~15s is treated as offline).
+        const cameraGetMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        if (cameraGetMatch && method === "GET") {
+            const [, accountId, slot] = cameraGetMatch;
+            const row = await env.DB.prepare(
+                "SELECT session_id, video_track, audio_track, updated_at FROM camera_sessions WHERE account_id = ? AND slot = ?"
+            ).bind(accountId, slot).first();
+            if (!row) return json(null);
+            const age = Math.floor(Date.now() / 1000) - row.updated_at;
+            return json({ ...row, age_seconds: age, live: age < 15 });
+        }
+
+        // ── DELETE /api/camera/:accountId/:slot ───────────────────────────────
+        // Caster's push.html calls this (best-effort, on unload) to go offline immediately.
+        const cameraDeleteMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        if (cameraDeleteMatch && method === "DELETE") {
+            const [, accountId, slot] = cameraDeleteMatch;
+            await env.DB.prepare("DELETE FROM camera_sessions WHERE account_id = ? AND slot = ?").bind(accountId, slot).run();
             return json({ ok: true });
         }
 
