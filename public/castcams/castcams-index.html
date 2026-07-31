@@ -52,16 +52,9 @@
   // Track last applied audio per side to avoid spamming postMessage
   let lastAudio = { left: {}, right: {}, solo: {} };
 
-  function buildViewUrl(streamId, roomName) {
-    if (!streamId || !roomName) return null;
-    const p = new URLSearchParams({
-      view: streamId,
-      room: roomName,
-      cleanoutput: "1",
-      nocontrols: "1",
-      transparent: "1",
-    });
-    return "https://vdo.ninja/?" + p.toString();
+  function buildViewUrl(slot) {
+    const p = new URLSearchParams({ id: accountId, slot });
+    return "/cam/pull.html?" + p.toString();
   }
 
   function sendAudio(iframe, side, cam) {
@@ -85,7 +78,6 @@
     const cam = (s.matches || {}).camera || {};
     const layout = cam.layout || "none";
     const cams = cam.cams || {};
-    const room = cam.room || "";
 
     if (layout === "none") {
       container.innerHTML = "";
@@ -95,14 +87,14 @@
     }
 
     if (layout === "duo") {
-      const leftUrl  = buildViewUrl(cams.left?.stream_id, room);
-      const rightUrl = buildViewUrl(cams.right?.stream_id, room);
+      const leftUrl  = buildViewUrl("left");
+      const rightUrl = buildViewUrl("right");
 
       if (prevLayout !== "duo" || prevLeftUrl !== leftUrl || prevRightUrl !== rightUrl) {
         container.innerHTML = `
           <div class="duo-wrap">
-            <iframe id="iframe-left"  class="cam-iframe" src="${leftUrl  || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
-            <iframe id="iframe-right" class="cam-iframe" src="${rightUrl || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
+            <iframe id="iframe-left"  class="cam-iframe" src="${leftUrl  || "about:blank"}" allow="autoplay;fullscreen"></iframe>
+            <iframe id="iframe-right" class="cam-iframe" src="${rightUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
           </div>`;
         prevLayout   = "duo";
         prevLeftUrl  = leftUrl;
@@ -120,12 +112,12 @@
     if (layout === "solo") {
       const soloSide = cam.solo || "left";
       const soloCam  = cams[soloSide] || {};
-      const soloUrl  = buildViewUrl(soloCam.stream_id, room);
+      const soloUrl  = buildViewUrl(soloSide);
 
       if (prevLayout !== "solo" || prevSoloUrl !== soloUrl) {
         container.innerHTML = `
           <div class="solo-wrap">
-            <iframe id="iframe-solo" class="cam-iframe" src="${soloUrl || "about:blank"}" allow="camera;microphone;autoplay;fullscreen"></iframe>
+            <iframe id="iframe-solo" class="cam-iframe" src="${soloUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
           </div>`;
         prevLayout  = "solo";
         prevSoloUrl = soloUrl;
