@@ -1,4 +1,4 @@
-name = "overlaysystem"
+name = 'overlaysystem'
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
@@ -16,4 +16,6 @@ binding = "SESSIONS"
 id = "f962df1a994345578ea956ac70fa64f3"
 
 [vars]
-ADMIN_SECRET = "K9#mX2$vQ7@nL4&wR8!pT3^jY6*hN5"
+CALLS_APP_ID = "c0743c17fbe92ea55340ed7552d5d5bf"
+
+TURN_KEY_ID = ""
