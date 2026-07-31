@@ -314,23 +314,6 @@
     <section class="panel" id="panel-camera">
       <h2>Camera</h2>
 
-      <!-- Room -->
-      <div class="card">
-        <h3>VDO Room</h3>
-        <div class="row">
-          <div>
-            <label>Room Name</label>
-            <input type="text" id="cam-room" placeholder="auto-generated">
-          </div>
-          <button class="btn secondary" id="cam-gen-room" style="margin-top:18px;">New Room</button>
-        </div>
-        <label style="margin-top:4px;">Director Link</label>
-        <div class="row">
-          <input type="text" id="cam-director-url" readonly style="color:#888;">
-          <button class="btn secondary" id="cam-copy-director" style="margin-top:0;flex:0;">Copy</button>
-        </div>
-      </div>
-
       <!-- Layout -->
       <div class="card">
         <h3>Layout</h3>
@@ -355,21 +338,16 @@
 
       <!-- Left Camera -->
       <div class="card">
-        <h3>Left Camera</h3>
+        <h3>Left Camera <span id="cam-left-status" style="font-size:11px;font-weight:normal;color:#666;">● checking…</span></h3>
         <div class="row">
           <div>
             <label>Label</label>
             <input type="text" id="cam-left-label" placeholder="Caster 1">
           </div>
-          <div>
-            <label>Stream ID</label>
-            <input type="text" id="cam-left-sid" placeholder="auto-generated" readonly style="color:#888;">
-          </div>
-          <button class="btn secondary" id="cam-left-gen" style="margin-top:18px;flex:0;">Generate</button>
         </div>
         <div class="row" style="margin-bottom:8px;">
           <div>
-            <label>Push Link (send to caster)</label>
+            <label>Push Link (send to caster - opens camera/mic in their browser)</label>
             <input type="text" id="cam-left-push" readonly style="color:#888;font-size:11px;">
           </div>
           <button class="btn secondary" id="cam-left-copy-push" style="margin-top:18px;flex:0;">Copy</button>
@@ -391,7 +369,7 @@
           </div>
         </div>
 
-        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">Push link params (regenerate link to apply)</p>
+        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">Gain / Compressor / Bitrate update live on the caster's page. Noise Suppression, Echo Cancellation and AGC are applied once when the caster opens their push link (they'd need to reload to pick up changes).</p>
 
         <div class="row">
           <div>
@@ -413,21 +391,16 @@
 
       <!-- Right Camera -->
       <div class="card">
-        <h3>Right Camera</h3>
+        <h3>Right Camera <span id="cam-right-status" style="font-size:11px;font-weight:normal;color:#666;">● checking…</span></h3>
         <div class="row">
           <div>
             <label>Label</label>
             <input type="text" id="cam-right-label" placeholder="Caster 2">
           </div>
-          <div>
-            <label>Stream ID</label>
-            <input type="text" id="cam-right-sid" placeholder="auto-generated" readonly style="color:#888;">
-          </div>
-          <button class="btn secondary" id="cam-right-gen" style="margin-top:18px;flex:0;">Generate</button>
         </div>
         <div class="row" style="margin-bottom:8px;">
           <div>
-            <label>Push Link (send to caster)</label>
+            <label>Push Link (send to caster - opens camera/mic in their browser)</label>
             <input type="text" id="cam-right-push" readonly style="color:#888;font-size:11px;">
           </div>
           <button class="btn secondary" id="cam-right-copy-push" style="margin-top:18px;flex:0;">Copy</button>
@@ -449,7 +422,7 @@
           </div>
         </div>
 
-        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">Push link params (regenerate link to apply)</p>
+        <p style="font-size:11px;color:#555;margin:12px 0 8px;text-transform:uppercase;letter-spacing:1px;">Gain / Compressor / Bitrate update live on the caster's page. Noise Suppression, Echo Cancellation and AGC are applied once when the caster opens their push link (they'd need to reload to pick up changes).</p>
 
         <div class="row">
           <div>
@@ -629,12 +602,9 @@ function populateUI(s) {
   const rightCam = cam.cams?.right || {};
   byid("cam-layout").value = cam.layout || "duo";
   byid("cam-solo").value   = cam.solo   || "left";
-  byid("cam-room").value   = cam.room   || "";
-  updateDirectorUrl();
 
   // Left
   byid("cam-left-label").value    = leftCam.label      || "";
-  byid("cam-left-sid").value      = leftCam.stream_id  || "";
   byid("cam-left-volume").value   = Math.round((leftCam.volume ?? 1) * 100);
   byid("cam-left-vol-display").textContent = Math.round((leftCam.volume ?? 1) * 100);
   byid("cam-left-panning").value  = leftCam.panning    ?? 0;
@@ -655,7 +625,6 @@ function populateUI(s) {
 
   // Right
   byid("cam-right-label").value   = rightCam.label      || "";
-  byid("cam-right-sid").value     = rightCam.stream_id  || "";
   byid("cam-right-volume").value  = Math.round((rightCam.volume ?? 1) * 100);
   byid("cam-right-vol-display").textContent = Math.round((rightCam.volume ?? 1) * 100);
   byid("cam-right-panning").value = rightCam.panning    ?? 0;
@@ -862,91 +831,24 @@ byid("save-timeout").addEventListener("click", () => {
   });
 });
 
-// ── Camera ────────────────────────────────────────────────────────────────────
-function randomId() {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 10);
-}
-
-function buildPushUrl(side) {
-  const sid     = byid(`cam-${side}-sid`).value.trim();
-  const room    = byid("cam-room").value.trim();
-  const label   = byid(`cam-${side}-label`).value.trim() || side;
-  const gain    = byid(`cam-${side}-gain`).value;
-  const bitrate = byid(`cam-${side}-bitrate`).value;
-  const comp    = byid(`cam-${side}-compressor`).checked;
-  const ns      = byid(`cam-${side}-ns`).checked;
-  const ec      = byid(`cam-${side}-ec`).checked;
-  const agc     = byid(`cam-${side}-agc`).checked;
-
-  if (!sid || !room) return "";
-
-  const p = new URLSearchParams({
-    push: sid,
-    room,
-    label,
-    audiobitrate: bitrate,
-    gain,
-  });
-  if (comp) p.set("compressor", "1");
-  if (!ns)  p.set("noisesuppression", "0");
-  if (!ec)  p.set("echocancellation", "0");
-  if (!agc) p.set("autoGainControl", "0");
-
-  return "https://vdo.ninja/?" + p.toString();
-}
-
-function updateDirectorUrl() {
-  const room = byid("cam-room").value.trim();
-  byid("cam-director-url").value = room
-    ? `https://vdo.ninja/?director=${room}`
-    : "";
-}
-
+// ── Camera (Cloudflare Calls) ───────────────────────────────────────────────
+// Push link is fully static per account+slot - Cloudflare Calls doesn't use
+// "rooms" or stream IDs like VDO.Ninja did, so there's nothing to regenerate.
 function updatePushUrl(side) {
-  byid(`cam-${side}-push`).value = buildPushUrl(side);
+  const p = new URLSearchParams({ slot: side, id: accountId });
+  byid(`cam-${side}-push`).value = `${location.origin}/cam/push.html?${p.toString()}`;
 }
 
-// Room generation
-byid("cam-gen-room").addEventListener("click", () => {
-  byid("cam-room").value = "room-" + randomId();
-  updateDirectorUrl();
-  updatePushUrl("left");
-  updatePushUrl("right");
-});
-byid("cam-room").addEventListener("input", () => {
-  updateDirectorUrl();
-  updatePushUrl("left");
-  updatePushUrl("right");
-});
-byid("cam-copy-director").addEventListener("click", () => {
-  navigator.clipboard.writeText(byid("cam-director-url").value).catch(() => {});
-  toast("Director link copied");
-});
-
-// Per-side generate
 ["left", "right"].forEach(side => {
-  byid(`cam-${side}-gen`).addEventListener("click", () => {
-    byid(`cam-${side}-sid`).value = randomId();
-    updatePushUrl(side);
-    toast(`${side} stream ID generated`);
-  });
-
   byid(`cam-${side}-copy-push`).addEventListener("click", () => {
     navigator.clipboard.writeText(byid(`cam-${side}-push`).value).catch(() => {});
     toast(`${side} push link copied`);
-  });
-
-  // Rebuild push link when params change
-  ["label", "gain", "bitrate", "compressor", "ns", "ec", "agc"].forEach(param => {
-    const el = byid(`cam-${side}-${param}`);
-    if (el) el.addEventListener("change", () => updatePushUrl(side));
   });
 
   // Gain display
   byid(`cam-${side}-gain`).addEventListener("input", () => {
     byid(`cam-${side}-gain-display`).textContent =
       parseFloat(byid(`cam-${side}-gain`).value).toFixed(1);
-    updatePushUrl(side);
   });
 
   // Volume display + real-time save
@@ -979,6 +881,28 @@ byid("cam-copy-director").addEventListener("click", () => {
     saveCamRealtime();
   });
 });
+
+// Poll whether each caster's push page is actually connected
+async function pollCameraStatus(side) {
+  const el = byid(`cam-${side}-status`);
+  try {
+    const res = await fetch(`${API}/api/camera/${accountId}/${side}`);
+    const info = res.ok ? await res.json() : null;
+    if (info && info.live) {
+      el.textContent = "🟢 Live";
+      el.style.color = "#4fd17f";
+    } else {
+      el.textContent = "⚪ Offline";
+      el.style.color = "#666";
+    }
+  } catch {
+    el.textContent = "⚪ Offline";
+    el.style.color = "#666";
+  }
+}
+pollCameraStatus("left");
+pollCameraStatus("right");
+setInterval(() => { pollCameraStatus("left"); pollCameraStatus("right"); }, 4000);
 
 // Debounced real-time save (volume, panning, mute only)
 async function saveCamRealtime() {
@@ -1026,13 +950,10 @@ byid("save-cam").addEventListener("click", () => {
       camera: {
         layout: byid("cam-layout").value,
         solo: byid("cam-solo").value,
-        room: byid("cam-room").value.trim(),
         cams: {
           left: {
             ...(cams.left || {}),
-            stream_id:   byid("cam-left-sid").value.trim(),
             label:       byid("cam-left-label").value.trim(),
-            push_url:    byid("cam-left-push").value,
             volume:      parseInt(byid("cam-left-volume").value, 10) / 100,
             panning:     parseInt(byid("cam-left-panning").value, 10),
             mute:        byid("cam-left-mute-btn").textContent.includes("Unmute"),
@@ -1045,9 +966,7 @@ byid("save-cam").addEventListener("click", () => {
           },
           right: {
             ...(cams.right || {}),
-            stream_id:   byid("cam-right-sid").value.trim(),
             label:       byid("cam-right-label").value.trim(),
-            push_url:    byid("cam-right-push").value,
             volume:      parseInt(byid("cam-right-volume").value, 10) / 100,
             panning:     parseInt(byid("cam-right-panning").value, 10),
             mute:        byid("cam-right-mute-btn").textContent.includes("Unmute"),
