@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera Push</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: #0b0b0d; color: #eee;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 24px 16px;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 20px; }
+  video {
+    width: 100%; max-width: 480px; aspect-ratio: 16/9; background: #000;
+    border-radius: 10px; border: 1px solid #262626;
+  }
+  .status {
+    margin-top: 14px; padding: 10px 16px; border-radius: 8px; font-size: 14px;
+    font-weight: 600; display: flex; align-items: center; gap: 8px;
+  }
+  .status.connecting { background: #2a2410; color: #e8c547; }
+  .status.live       { background: #10241a; color: #4fd17f; }
+  .status.error      { background: #2a1414; color: #ff6b6b; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .live .dot { animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .meta { margin-top: 18px; font-size: 12px; color: #666; max-width: 480px; text-align: center; line-height: 1.6; }
+  button {
+    margin-top: 16px; padding: 10px 20px; border-radius: 8px; border: none;
+    background: #333; color: #eee; font-size: 14px; cursor: pointer;
+  }
+  button:hover { background: #444; }
+</style>
+</head>
+<body>
+  <h1>Camera Push</h1>
+  <div class="sub" id="sub">Loading…</div>
+  <video id="preview" autoplay muted playsinline></video>
+  <div class="status connecting" id="status"><span class="dot"></span><span id="status-text">Connecting…</span></div>
+  <div class="meta" id="meta"></div>
+  <button id="retry-btn" style="display:none;">Try Again</button>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const accountId = qs.get("id");
+const slot = qs.get("slot") || "left";
+const API = location.origin;
+
+const els = {
+  sub: document.getElementById("sub"),
+  video: document.getElementById("preview"),
+  status: document.getElementById("status"),
+  statusText: document.getElementById("status-text"),
+  meta: document.getElementById("meta"),
+  retry: document.getElementById("retry-btn"),
+};
+
+els.sub.textContent = `Slot: ${slot} · Account: ${accountId || "?"}`;
+
+function setStatus(kind, text) {
+  els.status.className = "status " + kind;
+  els.statusText.textContent = text;
+}
+
+if (!accountId) {
+  setStatus("error", "Missing ?id= in URL");
+  throw new Error("missing account id");
+}
+
+let pc = null;
+let sessionId = null;
+let audioCtx = null;
+let gainNode = null;
+let compressorNode = null;
+let audioSender = null;
+let heartbeatTimer = null;
+let pollTimer = null;
+let currentBitrateKbps = null;
+
+function waitForIceGathering(peerConnection, timeoutMs = 2000) {
+  if (peerConnection.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    peerConnection.addEventListener("icegatheringstatechange", function onChange() {
+      if (peerConnection.iceGatheringState === "complete") {
+        clearTimeout(timer);
+        peerConnection.removeEventListener("icegatheringstatechange", onChange);
+        resolve();
+      }
+    });
+  });
+}
+
+async function fetchIceServers() {
+  try {
+    const res = await fetch(`${API}/api/calls/ice-servers`);
+    if (!res.ok) throw new Error("bad status");
+    const data = await res.json();
+    if (data && data.iceServers) return data.iceServers;
+  } catch {}
+  return [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+}
+
+async function fetchCamConfig() {
+  try {
+    const res = await fetch(`${API}/api/overlay/${accountId}`);
+    if (!res.ok) return {};
+    const data = await res.json();
+    return (data.matches || {}).camera?.cams?.[slot] || {};
+  } catch {
+    return {};
+  }
+}
+
+// Apply gain / compressor (and bitrate) live - polled from D1 every 2s.
+function applyAudioSettings(cam) {
+  if (gainNode) {
+    const gain = typeof cam.gain === "number" ? cam.gain : 1;
+    gainNode.gain.setTargetAtTime(gain, audioCtx.currentTime, 0.05);
+  }
+  if (compressorNode) {
+    if (cam.compressor ?? true) {
+      compressorNode.threshold.setTargetAtTime(-24, audioCtx.currentTime, 0.05);
+      compressorNode.knee.setTargetAtTime(30, audioCtx.currentTime, 0.05);
+      compressorNode.ratio.setTargetAtTime(12, audioCtx.currentTime, 0.05);
+      compressorNode.attack.setTargetAtTime(0.003, audioCtx.currentTime, 0.05);
+      compressorNode.release.setTargetAtTime(0.25, audioCtx.currentTime, 0.05);
+    } else {
+      // Effectively bypass: unity ratio, no threshold cut.
+      compressorNode.threshold.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+      compressorNode.knee.setTargetAtTime(0, audioCtx.currentTime, 0.05);
+      compressorNode.ratio.setTargetAtTime(1, audioCtx.currentTime, 0.05);
+    }
+  }
+  const bitrateKbps = cam.bitrate ?? 128;
+  if (audioSender && bitrateKbps !== currentBitrateKbps) {
+    currentBitrateKbps = bitrateKbps;
+    const params = audioSender.getParameters();
+    if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+    params.encodings[0].maxBitrate = bitrateKbps * 1000;
+    audioSender.setParameters(params).catch(() => {});
+  }
+}
+
+async function registerWithWorker() {
+  await fetch(`${API}/api/camera/${accountId}/${slot}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, videoTrack: "video", audioTrack: "audio" }),
+  });
+}
+
+async function start() {
+  const initialCam = await fetchCamConfig();
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: {
+        noiseSuppression: initialCam.noise_suppression ?? true,
+        echoCancellation: initialCam.echo_cancellation ?? true,
+        autoGainControl: initialCam.auto_gain ?? false,
+      },
+    });
+  } catch (e) {
+    setStatus("error", "Camera/mic permission denied");
+    els.meta.textContent = String(e.message || e);
+    els.retry.style.display = "inline-block";
+    els.retry.onclick = () => location.reload();
+    return;
+  }
+
+  els.video.srcObject = stream;
+
+  const videoTrack = stream.getVideoTracks()[0];
+  const micTrack = stream.getAudioTracks()[0];
+
+  // ── Real-time audio processing: mic -> gain -> compressor -> destination ──
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const micSource = audioCtx.createMediaStreamSource(new MediaStream([micTrack]));
+  gainNode = audioCtx.createGain();
+  compressorNode = audioCtx.createDynamicsCompressor();
+  const dest = audioCtx.createMediaStreamDestination();
+  micSource.connect(gainNode).connect(compressorNode).connect(dest);
+  applyAudioSettings(initialCam);
+  const processedAudioTrack = dest.stream.getAudioTracks()[0];
+
+  setStatus("connecting", "Negotiating with Cloudflare…");
+
+  pc = new RTCPeerConnection({ iceServers: await fetchIceServers() });
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
+      setStatus("error", `Connection ${pc.iceConnectionState}`);
+    }
+  };
+
+  const videoTransceiver = pc.addTransceiver(videoTrack, { direction: "sendonly" });
+  const audioTransceiver = pc.addTransceiver(processedAudioTrack, { direction: "sendonly" });
+  audioSender = audioTransceiver.sender;
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await waitForIceGathering(pc);
+
+  try {
+    const sessRes = await fetch(`${API}/api/calls/session`, { method: "POST" }).then(r => r.json());
+    if (!sessRes.sessionId) throw new Error(sessRes.error || "Failed to create Calls session");
+    sessionId = sessRes.sessionId;
+
+    const tracksRes = await fetch(`${API}/api/calls/session/${sessionId}/tracks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionDescription: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
+        tracks: [
+          { location: "local", mid: videoTransceiver.mid, trackName: "video" },
+          { location: "local", mid: audioTransceiver.mid, trackName: "audio" },
+        ],
+      }),
+    }).then(r => r.json());
+
+    if (!tracksRes.sessionDescription) throw new Error(tracksRes.error || "Failed to push tracks");
+    await pc.setRemoteDescription(tracksRes.sessionDescription);
+
+    await registerWithWorker();
+    setStatus("live", "Live");
+    els.meta.textContent = `Session ${sessionId.slice(0, 8)}… · Keep this tab open while casting.`;
+
+    heartbeatTimer = setInterval(registerWithWorker, 8000);
+    pollTimer = setInterval(async () => {
+      const cam = await fetchCamConfig();
+      applyAudioSettings(cam);
+    }, 2000);
+  } catch (e) {
+    setStatus("error", "Setup failed");
+    els.meta.textContent = String(e.message || e);
+    els.retry.style.display = "inline-block";
+    els.retry.onclick = () => location.reload();
+  }
+}
+
+function cleanup() {
+  clearInterval(heartbeatTimer);
+  clearInterval(pollTimer);
+  if (pc) pc.close();
+  if (accountId) {
+    // Best-effort: browsers allow keepalive fetches from unload handlers.
+    fetch(`${API}/api/camera/${accountId}/${slot}`, { method: "DELETE", keepalive: true }).catch(() => {});
+  }
+}
+window.addEventListener("pagehide", cleanup);
+window.addEventListener("beforeunload", cleanup);
+
+start();
+</script>
+</body>
+</html>
