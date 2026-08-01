@@ -19,20 +19,38 @@
     border: none;
     background: transparent;
     display: block;
+    position: absolute;
   }
-  .duo-wrap {
-    display: flex;
+  .cam-bg {
+    position: absolute;
+    background: #6F068E; /* matches the frame artwork's interior fill */
+    z-index: 1;
+  }
+  .cam-iframe { z-index: 2; }
+  .frame-img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 1920px;
     height: 1080px;
+    pointer-events: none;
+    z-index: 3;
   }
-  .duo-wrap .cam-iframe {
-    width: 960px;
-    height: 1080px;
-  }
-  .solo-wrap .cam-iframe {
-    width: 1920px;
-    height: 1080px;
-  }
+  /* Frame windows read from SingleCamINV.png / DuoCamINV.png (1920x1080
+     canvas): 798x436 inner opening. The video itself is sized to true
+     16:9 (775x436) and centered inside that opening so nothing is
+     cropped or stretched; cam-bg fills the ~11px pillarbox either side. */
+  .cam-bg.solo, .cam-iframe.solo           { top: 206px; height: 436px; }
+  .cam-bg.duo-left, .cam-iframe.duo-left   { top: 206px; height: 436px; }
+  .cam-bg.duo-right, .cam-iframe.duo-right { top: 206px; height: 436px; }
+
+  .cam-bg.solo      { left: 549px;  width: 798px; }
+  .cam-bg.duo-left  { left: 76px;   width: 798px; }
+  .cam-bg.duo-right { left: 1023px; width: 798px; }
+
+  .cam-iframe.solo      { left: 560.5px;  width: 775px; }
+  .cam-iframe.duo-left  { left: 87.5px;   width: 775px; }
+  .cam-iframe.duo-right { left: 1034.5px; width: 775px; }
 </style>
 </head>
 <body>
@@ -92,10 +110,11 @@
 
       if (prevLayout !== "duo" || prevLeftUrl !== leftUrl || prevRightUrl !== rightUrl) {
         container.innerHTML = `
-          <div class="duo-wrap">
-            <iframe id="iframe-left"  class="cam-iframe" src="${leftUrl  || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-            <iframe id="iframe-right" class="cam-iframe" src="${rightUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          </div>`;
+          <div class="cam-bg duo-left"></div>
+          <div class="cam-bg duo-right"></div>
+          <iframe id="iframe-left"  class="cam-iframe duo-left"  src="${leftUrl  || "about:blank"}" allow="autoplay;fullscreen"></iframe>
+          <iframe id="iframe-right" class="cam-iframe duo-right" src="${rightUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
+          <img class="frame-img" src="/castcams/frames/DuoCamINV.png" alt="">`;
         prevLayout   = "duo";
         prevLeftUrl  = leftUrl;
         prevRightUrl = rightUrl;
@@ -116,9 +135,9 @@
 
       if (prevLayout !== "solo" || prevSoloUrl !== soloUrl) {
         container.innerHTML = `
-          <div class="solo-wrap">
-            <iframe id="iframe-solo" class="cam-iframe" src="${soloUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          </div>`;
+          <div class="cam-bg solo"></div>
+          <iframe id="iframe-solo" class="cam-iframe solo" src="${soloUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
+          <img class="frame-img" src="/castcams/frames/SingleCamINV.png" alt="">`;
         prevLayout  = "solo";
         prevSoloUrl = soloUrl;
         lastAudio   = { left: {}, right: {}, solo: {} };
