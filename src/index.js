@@ -18,7 +18,7 @@
 //   PUT    /api/calls/session/:sessionId/tracks/close   (Cloudflare Calls proxy)
 //   PUT    /api/camera/:accountId/:slot     (push.html registers/heartbeats)
 //   GET    /api/camera/:accountId/:slot     (pull.html polls for current track)
-//   DELETE /api/camera/:accountId/:slot     (push.html unload - best effort)
+//   DELETE /api/camera/:accountId/:slot     (push.html unload — best effort)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CORS = {
@@ -437,9 +437,11 @@ export default {
         }
 
         // ── POST /api/calls/session ───────────────────────────────────────────
-        // Creates a bare Cloudflare Calls session (no SDP exchange yet).
+        // Creates a Cloudflare Calls session. Requires the client's initial
+        // offer — body: { sessionDescription: { type: 'offer', sdp } }.
         if (pathname === "/api/calls/session" && method === "POST") {
-            const { ok, status, data } = await callsFetch(env, "/sessions/new", { method: "POST", body: {} });
+            const body = await request.json().catch(() => ({}));
+            const { ok, status, data } = await callsFetch(env, "/sessions/new", { method: "POST", body });
             return json(data, ok ? 200 : status);
         }
 
@@ -477,7 +479,7 @@ export default {
 
         // ── PUT /api/camera/:accountId/:slot ──────────────────────────────────
         // Caster's push.html registers/heartbeats its current Calls session here.
-        // No login required - same trust model as the public overlay poll endpoint;
+        // No login required — same trust model as the public overlay poll endpoint;
         // the accountId itself is the capability (mirrors the old VDO push-link design).
         const cameraPutMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
         if (cameraPutMatch && method === "PUT") {
@@ -499,7 +501,7 @@ export default {
 
         // ── GET /api/camera/:accountId/:slot ──────────────────────────────────
         // pull.html polls this to find out what to pull (and whether the caster
-        // is still alive - anything older than ~15s is treated as offline).
+        // is still alive — anything older than ~15s is treated as offline).
         const cameraGetMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
         if (cameraGetMatch && method === "GET") {
             const [, accountId, slot] = cameraGetMatch;
