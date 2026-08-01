@@ -115,7 +115,7 @@ async function fetchCamConfig() {
   }
 }
 
-// Apply gain / compressor (and bitrate) live - polled from D1 every 2s.
+// Apply gain / compressor (and bitrate) live — polled from D1 every 2s.
 function applyAudioSettings(cam) {
   if (gainNode) {
     const gain = typeof cam.gain === "number" ? cam.gain : 1;
@@ -191,7 +191,7 @@ async function start() {
 
   setStatus("connecting", "Negotiating with Cloudflare…");
 
-  pc = new RTCPeerConnection({ iceServers: await fetchIceServers() });
+  pc = new RTCPeerConnection({ iceServers: await fetchIceServers(), bundlePolicy: "max-bundle" });
   pc.oniceconnectionstatechange = () => {
     if (pc.iceConnectionState === "failed" || pc.iceConnectionState === "disconnected") {
       setStatus("error", `Connection ${pc.iceConnectionState}`);
@@ -202,14 +202,27 @@ async function start() {
   const audioTransceiver = pc.addTransceiver(processedAudioTrack, { direction: "sendonly" });
   audioSender = audioTransceiver.sender;
 
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await waitForIceGathering(pc);
-
   try {
-    const sessRes = await fetch(`${API}/api/calls/session`, { method: "POST" }).then(r => r.json());
-    if (!sessRes.sessionId) throw new Error(sessRes.error || "Failed to create Calls session");
+    // Round 1: establish the session itself. sessions/new requires the
+    // client's initial offer (it can't be called with an empty body).
+    await pc.setLocalDescription(await pc.createOffer());
+    await waitForIceGathering(pc);
+
+    const sessRes = await fetch(`${API}/api/calls/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionDescription: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
+      }),
+    }).then(r => r.json());
+    if (!sessRes.sessionId) throw new Error(sessRes.errorDescription || sessRes.error || "Failed to create Calls session");
     sessionId = sessRes.sessionId;
+    await pc.setRemoteDescription(sessRes.sessionDescription);
+
+    // Round 2: register named tracks (mid -> trackName) — this is a second,
+    // separate offer/answer exchange even though no new tracks are added.
+    await pc.setLocalDescription(await pc.createOffer());
+    await waitForIceGathering(pc);
 
     const tracksRes = await fetch(`${API}/api/calls/session/${sessionId}/tracks`, {
       method: "POST",
@@ -223,7 +236,7 @@ async function start() {
       }),
     }).then(r => r.json());
 
-    if (!tracksRes.sessionDescription) throw new Error(tracksRes.error || "Failed to push tracks");
+    if (!tracksRes.sessionDescription) throw new Error(tracksRes.errorDescription || tracksRes.error || "Failed to push tracks");
     await pc.setRemoteDescription(tracksRes.sessionDescription);
 
     await registerWithWorker();
