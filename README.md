@@ -86,10 +86,6 @@ Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudfl
 - **Noise Suppression / Echo Cancellation / Auto Gain Control / Audio Bitrate** are applied when the caster's page loads (they need to refresh their push link to pick up changes).
 - Volume/Panning/Mute (under "Real-time controls") apply on the overlay side and update instantly.
 
-**Setup (one-time, for the site operator):** create a Calls App in the Cloudflare dashboard under Realtime → SFU, put its App ID in `wrangler.toml` as `CALLS_APP_ID`, and set the App Secret with `wrangler secret put CALLS_APP_SECRET`. See `migrate-calls.sql` if you're adding this to an existing deployment.
-
-Optional but recommended: create a TURN key under Realtime → TURN, set its ID as `TURN_KEY_ID` in `wrangler.toml`, and its API token with `wrangler secret put TURN_KEY_API_TOKEN`. Without this, casters fall back to STUN-only, which can fail behind symmetric NAT or locked-down corporate/venue networks.
-
 ### Spotify
 - Check **Show Now Playing** to display the current song on the overlay
 - Click **Connect Spotify** to authenticate
