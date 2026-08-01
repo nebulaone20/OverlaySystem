@@ -378,7 +378,7 @@
           </div>
           <div>
             <label>Audio Bitrate (kbps)</label>
-            <input type="number" id="cam-left-bitrate" min="32" max="320" value="128">
+            <input type="number" id="cam-left-bitrate" min="256" max="320" value="320">
           </div>
         </div>
         <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:4px;">
@@ -431,7 +431,7 @@
           </div>
           <div>
             <label>Audio Bitrate (kbps)</label>
-            <input type="number" id="cam-right-bitrate" min="32" max="320" value="128">
+            <input type="number" id="cam-right-bitrate" min="256" max="320" value="320">
           </div>
         </div>
         <div class="row" style="flex-wrap:wrap;gap:12px;margin-top:4px;">
@@ -612,7 +612,7 @@ function populateUI(s) {
   byid("cam-left-pan-display").textContent = lp === 0 ? "C" : lp < 0 ? `L${Math.abs(lp)}` : `R${lp}`;
   byid("cam-left-gain").value     = leftCam.gain       ?? 1;
   byid("cam-left-gain-display").textContent = (leftCam.gain ?? 1).toFixed(1);
-  byid("cam-left-bitrate").value  = leftCam.bitrate    ?? 128;
+  byid("cam-left-bitrate").value  = leftCam.bitrate    ?? 320;
   byid("cam-left-compressor").checked       = leftCam.compressor        ?? true;
   byid("cam-left-ns").checked               = leftCam.noise_suppression ?? true;
   byid("cam-left-ec").checked               = leftCam.echo_cancellation ?? true;
@@ -632,7 +632,7 @@ function populateUI(s) {
   byid("cam-right-pan-display").textContent = rp === 0 ? "C" : rp < 0 ? `L${Math.abs(rp)}` : `R${rp}`;
   byid("cam-right-gain").value    = rightCam.gain       ?? 1;
   byid("cam-right-gain-display").textContent = (rightCam.gain ?? 1).toFixed(1);
-  byid("cam-right-bitrate").value = rightCam.bitrate    ?? 128;
+  byid("cam-right-bitrate").value = rightCam.bitrate    ?? 320;
   byid("cam-right-compressor").checked      = rightCam.compressor        ?? true;
   byid("cam-right-ns").checked              = rightCam.noise_suppression ?? true;
   byid("cam-right-ec").checked              = rightCam.echo_cancellation ?? true;
