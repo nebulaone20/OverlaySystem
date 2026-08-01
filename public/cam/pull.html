@@ -98,6 +98,11 @@ async function connectTo(pushSessionId) {
   try {
     // sessions/new requires an initial offer even with no local tracks —
     // this establishes the base transport; tracks are pulled in a second step.
+    // We have nothing to send, but max-bundle requires at least one m-line to
+    // form a BUNDLE group, so add recvonly transceivers just to get one.
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.addTransceiver("audio", { direction: "recvonly" });
+
     await pc.setLocalDescription(await pc.createOffer());
     await waitForIceGathering(pc);
 
