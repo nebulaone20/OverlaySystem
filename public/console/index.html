@@ -227,6 +227,30 @@
     <!-- MATCHES -->
     <section class="panel" id="panel-matches">
       <h2>Matches</h2>
+
+      <!-- Pull the matchup straight off the Road 2 bracket instead of typing
+           the tricodes, logos and series length in again every game. -->
+      <div class="card" id="r2-card">
+        <label>Load from Road 2</label>
+        <div class="row">
+          <div>
+            <label>Tournament id</label>
+            <input type="text" id="r2-id" placeholder="new-dawn" spellcheck="false">
+          </div>
+          <div>
+            <label>Match</label>
+            <select id="r2-match"><option value="">Load a tournament first</option></select>
+          </div>
+        </div>
+        <div class="row">
+          <div><label><input type="checkbox" id="r2-scores"> Bring the scores too</label></div>
+          <div><label><input type="checkbox" id="r2-swap"> Swap sides</label></div>
+        </div>
+        <button class="btn wide" id="r2-load">Load matches</button>
+        <button class="btn wide" id="r2-fill" style="margin-top:8px;" disabled>Fill this match in</button>
+        <div id="r2-note" style="margin-top:8px;font-size:12px;opacity:.75;"></div>
+      </div>
+
       <div class="card">
         <div class="row">
           <div>
@@ -681,6 +705,136 @@ function renderScoreInputs(amount, matchData = {}) {
 byid("game-amount").addEventListener("change", () => {
   renderScoreInputs(parseInt(byid("game-amount").value, 10));
 });
+
+// ── Road 2 bracket ────────────────────────────────────────────────────────────
+// Reads the public overlay feed on the Road 2 site and fills the tricodes,
+// logos, series length and optionally the scores for the match you pick.
+// Nothing here writes back to Road 2, and it needs no key: the feed is the
+// same bracket the public bracket page already shows.
+
+const R2_BASE = "https://events.road2.workers.dev";
+const R2_KEY = "overlay.road2.tournament";
+
+let r2Matches = [];
+
+function r2Note(text, bad) {
+  const box = byid("r2-note");
+  box.textContent = text || "";
+  box.style.color = bad ? "#ff8a8a" : "";
+}
+
+async function r2Load() {
+  const id = byid("r2-id").value.trim().toLowerCase();
+  if (!id) { r2Note("Put the tournament id in, e.g. new-dawn.", true); return; }
+
+  byid("r2-load").disabled = true;
+  r2Note("Loading...");
+  try {
+    const res = await fetch(R2_BASE + "/api/brackets/" + encodeURIComponent(id) + "/overlay", {
+      cache: "no-store",
+    });
+    if (res.status === 404) throw new Error("No published tournament with that id.");
+    if (!res.ok) throw new Error("Road 2 answered " + res.status + ".");
+    const data = await res.json();
+
+    r2Matches = data.matches || [];
+    const select = byid("r2-match");
+    select.innerHTML = "";
+    if (!r2Matches.length) {
+      select.innerHTML = '<option value="">No matches drawn yet</option>';
+      byid("r2-fill").disabled = true;
+      r2Note("That bracket has no matches yet.", true);
+      return;
+    }
+
+    r2Matches.forEach((m) => {
+      const option = document.createElement("option");
+      option.value = String(m.id);
+      const when = m.scheduledAt
+        ? new Date(m.scheduledAt * 1000).toLocaleString([], {
+            weekday: "short", hour: "numeric", minute: "2-digit" })
+        : "no time";
+      option.textContent = m.label + "  (" + m.seriesType + ", " + when + ")"
+        + (m.settled ? "  [played]" : "");
+      select.appendChild(option);
+    });
+
+    // Land on whatever is most likely next: the first unplayed match.
+    const next = r2Matches.find((m) => !m.settled && m.ready)
+      || r2Matches.find((m) => !m.settled);
+    if (next) select.value = String(next.id);
+
+    byid("r2-fill").disabled = false;
+    try { localStorage.setItem(R2_KEY, id); } catch (e) {}
+    r2Note(data.name + ": " + r2Matches.length + " matches loaded.");
+  } catch (err) {
+    r2Matches = [];
+    byid("r2-fill").disabled = true;
+    r2Note(err.message, true);
+  }
+  byid("r2-load").disabled = false;
+}
+
+function r2Fill() {
+  const id = Number(byid("r2-match").value);
+  const match = r2Matches.find((m) => m.id === id);
+  if (!match) { r2Note("Pick a match first.", true); return; }
+
+  const swap = byid("r2-swap").checked;
+  const left = {
+    tri: swap ? match.rightTri : match.leftTri,
+    logo: swap ? match.rightLogo : match.leftLogo,
+    score: swap ? match.rightScore : match.leftScore,
+  };
+  const right = {
+    tri: swap ? match.leftTri : match.rightTri,
+    logo: swap ? match.leftLogo : match.rightLogo,
+    score: swap ? match.leftScore : match.rightScore,
+  };
+
+  // The series length comes from the match's own best-of, so a BO5 grand final
+  // sets itself up as five games without anyone remembering to change it.
+  const games = Number(match.seriesType.replace("BO", "")) || 1;
+  byid("series-type").value = match.seriesType;
+  byid("game-amount").value = String(games);
+  if (Number(byid("games-displayed").value || 0) > games) {
+    byid("games-displayed").value = String(games);
+  }
+
+  // Redraw the score inputs at the new length, keeping what is already typed.
+  renderScoreInputs(games, (state.matches && state.matches.matches) || {});
+
+  for (let i = 1; i <= games; i++) {
+    const setIf = (elementId, value) => {
+      const field = byid(elementId);
+      if (field && value != null) field.value = value;
+    };
+    setIf(`game${i}_left_tri`, left.tri || "");
+    setIf(`game${i}_right_tri`, right.tri || "");
+    setIf(`game${i}_left_logo`, left.logo || "");
+    setIf(`game${i}_right_logo`, right.logo || "");
+  }
+
+  // Scores are per game on the overlay and a series score on the bracket, so
+  // they only go in when asked for, and only on game one.
+  if (byid("r2-scores").checked) {
+    const l = byid("game1_left_score");
+    const r = byid("game1_right_score");
+    if (l) l.value = String(left.score ?? 0);
+    if (r) r.value = String(right.score ?? 0);
+  }
+
+  r2Note("Filled in " + match.label + ". Press Save Matches to send it out.");
+}
+
+byid("r2-load").addEventListener("click", r2Load);
+byid("r2-fill").addEventListener("click", r2Fill);
+byid("r2-id").addEventListener("keydown", (e) => { if (e.key === "Enter") r2Load(); });
+
+try {
+  const remembered = localStorage.getItem(R2_KEY);
+  if (remembered) byid("r2-id").value = remembered;
+} catch (e) {}
 
 // ── Graphics ──────────────────────────────────────────────────────────────────
 function createGraphicInput(value = "") {
