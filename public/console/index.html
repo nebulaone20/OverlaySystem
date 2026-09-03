@@ -243,6 +243,16 @@
           </div>
         </div>
         <div class="row">
+          <div>
+            <label>Fill into</label>
+            <select id="r2-slot"><option value="1">Game 1</option></select>
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <label style="display:block;"><input type="checkbox" id="r2-series" checked> Set series type</label>
+          </div>
+        </div>
+        <div class="row">
           <div><label><input type="checkbox" id="r2-scores"> Bring the scores too</label></div>
           <div><label><input type="checkbox" id="r2-swap"> Swap sides</label></div>
         </div>
@@ -702,8 +712,33 @@ function renderScoreInputs(amount, matchData = {}) {
   }
 }
 
+/**
+ * What is typed into the game blocks right now.
+ *
+ * Redrawing the blocks used to throw this away, so bumping Games (total) from
+ * one to two wiped the matchup already on screen. Reading it back first means
+ * changing the count only ever adds or removes blocks.
+ */
+function currentGames() {
+  const out = {};
+  for (let i = 1; i <= 5; i++) {
+    if (!byid(`game${i}_left_tri`)) continue;
+    out[`game${i}`] = {
+      left_tri: byid(`game${i}_left_tri`).value.trim().toUpperCase(),
+      right_tri: byid(`game${i}_right_tri`).value.trim().toUpperCase(),
+      left_logo: byid(`game${i}_left_logo`).value.trim(),
+      right_logo: byid(`game${i}_right_logo`).value.trim(),
+      left_score: parseInt(byid(`game${i}_left_score`).value || "0", 10),
+      right_score: parseInt(byid(`game${i}_right_score`).value || "0", 10),
+    };
+  }
+  return out;
+}
+
 byid("game-amount").addEventListener("change", () => {
-  renderScoreInputs(parseInt(byid("game-amount").value, 10));
+  const saved = (state.matches && state.matches.matches) || {};
+  renderScoreInputs(parseInt(byid("game-amount").value, 10),
+    { ...saved, ...currentGames() });
 });
 
 // ── Road 2 bracket ────────────────────────────────────────────────────────────
@@ -775,6 +810,27 @@ async function r2Load() {
   byid("r2-load").disabled = false;
 }
 
+/**
+ * Keep "Fill into" in step with how many matchups are on screen.
+ *
+ * A game block here is a whole matchup, not a map, so filling one must never
+ * change Games (total) or Games Displayed. Those are the operator's choice
+ * about what the graphic shows.
+ */
+function r2SyncSlots() {
+  const amount = Math.max(1, parseInt(byid("game-amount").value || "1", 10));
+  const slot = byid("r2-slot");
+  const wanted = String(Math.min(Number(slot.value || 1), amount));
+  slot.innerHTML = "";
+  for (let i = 1; i <= amount; i++) {
+    const option = document.createElement("option");
+    option.value = String(i);
+    option.textContent = "Game " + i;
+    slot.appendChild(option);
+  }
+  slot.value = wanted;
+}
+
 function r2Fill() {
   const id = Number(byid("r2-match").value);
   const match = r2Matches.find((m) => m.id === id);
@@ -792,44 +848,46 @@ function r2Fill() {
     score: swap ? match.leftScore : match.rightScore,
   };
 
-  // The series length comes from the match's own best-of, so a BO5 grand final
-  // sets itself up as five games without anyone remembering to change it.
-  const games = Number(match.seriesType.replace("BO", "")) || 1;
-  byid("series-type").value = match.seriesType;
-  byid("game-amount").value = String(games);
-  if (Number(byid("games-displayed").value || 0) > games) {
-    byid("games-displayed").value = String(games);
-  }
+  // The series type is one setting for the whole broadcast, not per matchup,
+  // so it is a checkbox rather than something that follows every fill.
+  if (byid("r2-series").checked) byid("series-type").value = match.seriesType;
 
-  // Redraw the score inputs at the new length, keeping what is already typed.
-  renderScoreInputs(games, (state.matches && state.matches.matches) || {});
+  r2SyncSlots();
+  const slot = byid("r2-slot").value;
+  const setIf = (elementId, value) => {
+    const field = byid(elementId);
+    if (field) field.value = value;
+  };
 
-  for (let i = 1; i <= games; i++) {
-    const setIf = (elementId, value) => {
-      const field = byid(elementId);
-      if (field && value != null) field.value = value;
-    };
-    setIf(`game${i}_left_tri`, left.tri || "");
-    setIf(`game${i}_right_tri`, right.tri || "");
-    setIf(`game${i}_left_logo`, left.logo || "");
-    setIf(`game${i}_right_logo`, right.logo || "");
-  }
+  setIf(`game${slot}_left_tri`, left.tri || "");
+  setIf(`game${slot}_right_tri`, right.tri || "");
+  setIf(`game${slot}_left_logo`, left.logo || "");
+  setIf(`game${slot}_right_logo`, right.logo || "");
 
-  // Scores are per game on the overlay and a series score on the bracket, so
-  // they only go in when asked for, and only on game one.
+  // The bracket's score is maps won in the series, which is what the overlay
+  // shows for a matchup. Off by default so it cannot wipe a live score.
   if (byid("r2-scores").checked) {
-    const l = byid("game1_left_score");
-    const r = byid("game1_right_score");
-    if (l) l.value = String(left.score ?? 0);
-    if (r) r.value = String(right.score ?? 0);
+    setIf(`game${slot}_left_score`, String(left.score ?? 0));
+    setIf(`game${slot}_right_score`, String(right.score ?? 0));
   }
 
-  r2Note("Filled in " + match.label + ". Press Save Matches to send it out.");
+  // Move to the next matchup slot so filling three of them is three clicks.
+  const select = byid("r2-slot");
+  const next = Number(slot) + 1;
+  const advanced = next <= select.options.length;
+  if (advanced) select.value = String(next);
+
+  r2Note("Filled " + match.label + " into game " + slot + "."
+    + (advanced ? " Next fill goes into game " + next + "." : "")
+    + " Press Save Matches to send it out.");
 }
 
 byid("r2-load").addEventListener("click", r2Load);
 byid("r2-fill").addEventListener("click", r2Fill);
 byid("r2-id").addEventListener("keydown", (e) => { if (e.key === "Enter") r2Load(); });
+byid("game-amount").addEventListener("change", r2SyncSlots);
+byid("game-amount").addEventListener("input", r2SyncSlots);
+r2SyncSlots();
 
 try {
   const remembered = localStorage.getItem(R2_KEY);
