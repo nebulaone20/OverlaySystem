@@ -970,8 +970,9 @@ byid("match-reset-toggle").addEventListener("click", () =>
 // ── Map ───────────────────────────────────────────────────────────────────────
 byid("save-map").addEventListener("click", () => {
   const map = byid("map-select").value;
+  const R2_BASE = "https://pub-441643e9c2834dfb8718442dc282ad9c.r2.dev";
   const map_video = map !== "none"
-    ? `https://videos.yourdomain.com/${map}.mp4`
+    ? `${R2_BASE}/${map}.mp4`
     : "";
   saveState({ map, map_video });
 });
