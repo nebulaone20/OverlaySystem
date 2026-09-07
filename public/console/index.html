@@ -218,6 +218,7 @@
           <option value="Lotus">Lotus</option>
           <option value="Pearl">Pearl</option>
           <option value="Split">Split</option>
+          <option value="Sunset">Summit</option>
           <option value="Sunset">Sunset</option>
         </select>
         <button class="btn wide" id="save-map">Save Map</button>
@@ -970,7 +971,7 @@ byid("match-reset-toggle").addEventListener("click", () =>
 byid("save-map").addEventListener("click", () => {
   const map = byid("map-select").value;
   const map_video = map !== "none"
-    ? `https://github.com/caleb-cb/community-caster-overlay-videos/blob/main/${map}_Cinematic.mp4?raw=true`
+    ? `https://videos.yourdomain.com/${map}.mp4`
     : "";
   saveState({ map, map_video });
 });
