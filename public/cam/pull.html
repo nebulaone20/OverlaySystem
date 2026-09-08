@@ -116,7 +116,6 @@ async function connectTo(pushSessionId) {
   const gatheredTypes = new Set();
   pc = new RTCPeerConnection({ iceServers: await fetchIceServers(), bundlePolicy: "max-bundle" });
   remoteStream = new MediaStream();
-  video.srcObject = remoteStream;
 
   pc.addEventListener("iceconnectionstatechange", () => {
     console.log("[pull] iceConnectionState:", pc.iceConnectionState);
@@ -129,36 +128,65 @@ async function connectTo(pushSessionId) {
   });
 
   pc.ontrack = (ev) => {
-    console.log("[pull] track received:", ev.track.kind, "readyState:", ev.track.readyState);
-    remoteStream.addTrack(ev.track);
+    const t = ev.track;
+    console.log("[pull] track received:", t.kind, "readyState:", t.readyState, "muted:", t.muted);
 
-    if (ev.track.kind === "video") {
-      // srcObject was assigned while the stream was still empty, and a track
-      // added afterwards does not reliably start playback. Re-assign so the
-      // element re-reads the stream, then start it explicitly. The element is
-      // muted, so autoplay is permitted; audio is handled separately below via
-      // the Web Audio graph, which is why sound worked while video did not.
-      video.srcObject = remoteStream;
-      const p = video.play();
-      if (p && p.catch) p.catch(err => console.warn("[pull] video.play() rejected:", err));
+    if (!remoteStream.getTracks().includes(t)) remoteStream.addTrack(t);
+
+    if (t.kind === "video") {
+      // ontrack can fire more than once for the same transceiver, and
+      // re-assigning srcObject each time resets the element mid-load (that is
+      // the AbortError). Attach once, and only when the track is actually
+      // carrying media - a remote track arrives muted and fires "unmute" when
+      // the first frames land.
+      const attach = () => {
+        if (video.srcObject !== remoteStream) video.srcObject = remoteStream;
+        const pr = video.play();
+        if (pr && pr.catch) pr.catch(err => {
+          if (err && err.name !== "AbortError") console.warn("[pull] video.play() rejected:", err);
+        });
+      };
+      if (!t.muted) attach();
+      t.addEventListener("unmute", () => {
+        console.log("[pull] video track unmuted - frames arriving");
+        attach();
+      }, { once: true });
+      t.addEventListener("mute", () => console.log("[pull] video track muted - frames stopped"));
     }
 
-    if (ev.track.kind === "audio") {
+    if (t.kind === "audio") {
       ensureAudioGraph();
-      const src = audioCtx.createMediaStreamSource(new MediaStream([ev.track]));
+      const src = audioCtx.createMediaStreamSource(new MediaStream([t]));
       src.connect(gainNode);
     }
   };
 
-  // One-shot report so a black frame can be told apart from a missing track.
-  setTimeout(() => {
+  // Is the SFU actually sending us video? getStats settles it.
+  setTimeout(async () => {
     if (!pc || pc.connectionState === "closed") return;
+    let vid = "no inbound-rtp video stats";
+    try {
+      const stats = await pc.getStats();
+      stats.forEach(r => {
+        if (r.type === "inbound-rtp" && (r.kind === "video" || r.mediaType === "video")) {
+          vid = "bytes=" + r.bytesReceived +
+                " packets=" + r.packetsReceived +
+                " framesReceived=" + (r.framesReceived ?? "n/a") +
+                " framesDecoded=" + (r.framesDecoded ?? "n/a") +
+                " frameWidth=" + (r.frameWidth ?? "n/a");
+        }
+      });
+    } catch (e) { vid = "getStats failed: " + e; }
+
+    const vt = remoteStream.getVideoTracks()[0];
+    console.log("[pull] inbound video:", vid);
     console.log("[pull] video status:",
       "tracks=" + remoteStream.getVideoTracks().length,
+      "trackMuted=" + (vt ? vt.muted : "n/a"),
       "paused=" + video.paused,
       "readyState=" + video.readyState,
       "size=" + video.videoWidth + "x" + video.videoHeight);
-  }, 4000);
+  }, 6000);
 
   try {
     // sessions/new requires an initial offer even with no local tracks —
