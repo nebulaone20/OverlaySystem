@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Graphics OP</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Jefferies", Arial, sans-serif;
+}
+
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies.otf") format("opentype");
+    font-weight: normal;
+}
+@font-face {
+    font-family: "Jefferies";
+    src: url("jefferies bold.otf") format("opentype");
+    font-weight: bold;
+}
+
+:root {
+    --brand-color: rgb(10, 105, 164);
+    --panel-bg: rgba(14, 14, 18, 0.94);
+}
+
+/* ══ SHOUTOUT ══════════════════════════════════════════════════════════════ */
+
+.shout {
+    position: absolute;
+    /* Top edge sits where the bottom edge used to be: 110 + 132 = 242. */
+    top: 242px;
+    height: 132px;
+    min-width: 430px;
+    background: var(--panel-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 46px;
+    z-index: 30;
+    will-change: transform;
+    transition: transform 0.62s cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+
+/* Left panel - observers. Sits off the left wall until shown. */
+#shout-left {
+    left: 0;
+    align-items: flex-start;
+    text-align: left;
+    border-left: 8px solid var(--brand-color);
+    transform: translateX(-102%);
+}
+#shout-left.show { transform: translateX(0); }
+
+/* Right panel - casters. Mirrored off the right wall. */
+#shout-right {
+    right: 0;
+    align-items: flex-end;
+    text-align: right;
+    border-right: 8px solid var(--brand-color);
+    transform: translateX(102%);
+    transition-delay: 0.08s;
+}
+#shout-right.show { transform: translateX(0); }
+
+.shout-label {
+    font-size: 21px;
+    font-weight: bold;
+    letter-spacing: 4px;
+    color: var(--brand-color);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    white-space: nowrap;
+}
+
+.shout-names {
+    display: flex;
+    gap: 26px;
+    align-items: baseline;
+    white-space: nowrap;
+}
+/* Right side is mirrored in layout, but names keep their entered order
+   so "Caster 1" always reads first. */
+
+.shout-name {
+    font-size: 40px;
+    font-weight: bold;
+    color: #fff;
+    letter-spacing: 1px;
+}
+
+/* thin divider dot between two names */
+.shout-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--brand-color);
+    border-radius: 50%;
+    align-self: center;
+}
+
+/* ══ TOAST ═════════════════════════════════════════════════════════════════ */
+
+#toast-wrap {
+    position: absolute;
+    top: 540px;
+    left: 960px;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    z-index: 40;
+}
+
+/* The mark - slides up into place first, stays pinned to the left edge */
+#toast-mark {
+    width: 116px;
+    height: 116px;
+    flex: 0 0 116px;
+    background: var(--brand-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(70px);
+    transition: transform 0.42s cubic-bezier(0.22, 0.9, 0.28, 1),
+                opacity 0.32s ease;
+}
+#toast-mark.up {
+    opacity: 1;
+    transform: translateY(0);
+}
+#toast-mark img {
+    width: 76px;
+    height: 76px;
+    object-fit: contain;
+}
+
+/* The body - stretches out horizontally from behind the mark */
+#toast-body {
+    height: 116px;
+    width: 0;
+    overflow: hidden;
+    background: var(--panel-bg);
+    display: flex;
+    align-items: center;
+    transition: width 0.46s cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+
+#toast-text {
+    padding: 0 42px;
+    font-size: 40px;
+    font-weight: bold;
+    color: #fff;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: opacity 0.24s ease;
+}
+#toast-text.show { opacity: 1; }
+
+/* Offscreen twin used purely to measure the natural text width */
+#toast-measure {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+    top: -9999px;
+    left: -9999px;
+    padding: 0 42px;
+    font-size: 40px;
+    font-weight: bold;
+    white-space: nowrap;
+    letter-spacing: 1px;
+    font-family: "Jefferies", Arial, sans-serif;
+}
+</style>
+</head>
+<body>
+
+<!-- Caster / observer shoutout -->
+<div class="shout" id="shout-left">
+    <div class="shout-label" id="shout-left-label">OBSERVERS</div>
+    <div class="shout-names" id="shout-left-names"></div>
+</div>
+
+<div class="shout" id="shout-right">
+    <div class="shout-label" id="shout-right-label">CASTERS</div>
+    <div class="shout-names" id="shout-right-names"></div>
+</div>
+
+<!-- Toast -->
+<div id="toast-wrap">
+    <div id="toast-mark"><img id="toast-mark-img" src="" alt=""></div>
+    <div id="toast-body"><span id="toast-text"></span></div>
+</div>
+
+<span id="toast-measure"></span>
+
+<script>
+// ── Setup ───────────────────────────────────────────────────────────────────
+const accountId = new URLSearchParams(location.search).get("id");
+if (!accountId) {
+    document.body.innerHTML =
+        "<p style='color:red;padding:40px;font-size:32px;font-family:Arial;'>Missing ?id= in URL</p>";
+}
+
+const byid = (id) => document.getElementById(id);
+
+const brandColors = {
+    road2:   "rgb(120, 40, 180)",
+    waveoce: "rgb(10, 105, 164)",
+};
+
+const brandMarks = {
+    road2:   "mark-1024.png",
+    waveoce: "Wave OCE Rising Tides Brandmark Logo_White.png",
+    blob:    "blob logo.png",
+};
+
+// ── Shoutout ────────────────────────────────────────────────────────────────
+let shoutTimer = null;
+
+function renderNames(container, names) {
+    container.innerHTML = "";
+    const clean = (names || []).map(n => String(n || "").trim()).filter(Boolean);
+    clean.forEach((name, i) => {
+        if (i > 0) {
+            const dot = document.createElement("div");
+            dot.className = "shout-dot";
+            container.appendChild(dot);
+        }
+        const el = document.createElement("div");
+        el.className = "shout-name";
+        el.textContent = name;
+        container.appendChild(el);
+    });
+    return clean.length;
+}
+
+function showShoutout(g) {
+    clearTimeout(shoutTimer);
+
+    byid("shout-left-label").textContent  = (g.obs_label  || "OBSERVERS").toUpperCase();
+    byid("shout-right-label").textContent = (g.cast_label || "CASTERS").toUpperCase();
+
+    const nLeft  = renderNames(byid("shout-left-names"),  g.observers);
+    const nRight = renderNames(byid("shout-right-names"), g.casters);
+
+    // A side with no names stays off screen entirely
+    if (nLeft)  byid("shout-left").classList.add("show");
+    if (nRight) byid("shout-right").classList.add("show");
+
+    const dur = Math.max(1000, Number(g.duration) || 8000);
+    shoutTimer = setTimeout(hideShoutout, dur);
+}
+
+function hideShoutout() {
+    clearTimeout(shoutTimer);
+    byid("shout-left").classList.remove("show");
+    byid("shout-right").classList.remove("show");
+}
+
+// ── Toast ───────────────────────────────────────────────────────────────────
+let toastTimers = [];
+
+function clearToastTimers() {
+    toastTimers.forEach(clearTimeout);
+    toastTimers = [];
+}
+
+function showToast(g) {
+    clearToastTimers();
+
+    const text = String(g.text || "").trim();
+    if (!text) return;
+
+    byid("toast-text").textContent    = text;
+    byid("toast-measure").textContent = text;
+
+    const mark = byid("toast-mark");
+    const body = byid("toast-body");
+    const txt  = byid("toast-text");
+
+    // Reset to hidden state before replaying
+    mark.classList.remove("up");
+    txt.classList.remove("show");
+    body.style.width = "0px";
+
+    // 1. mark slides up into the middle
+    toastTimers.push(setTimeout(() => mark.classList.add("up"), 30));
+
+    // 2. body stretches out from behind it to fit the text
+    toastTimers.push(setTimeout(() => {
+        const w = Math.min(1500, Math.ceil(byid("toast-measure").offsetWidth));
+        body.style.width = w + "px";
+    }, 430));
+
+    // 3. text fades in once there is room for it
+    toastTimers.push(setTimeout(() => txt.classList.add("show"), 690));
+
+    const dur = Math.max(1000, Number(g.duration) || 8000);
+    toastTimers.push(setTimeout(hideToast, 690 + dur));
+}
+
+function hideToast() {
+    clearToastTimers();
+    const mark = byid("toast-mark");
+    const body = byid("toast-body");
+    const txt  = byid("toast-text");
+
+    // Reverse of the show sequence
+    txt.classList.remove("show");
+    toastTimers.push(setTimeout(() => { body.style.width = "0px"; }, 200));
+    toastTimers.push(setTimeout(() => { mark.classList.remove("up"); }, 640));
+}
+
+// ── D1 polling ──────────────────────────────────────────────────────────────
+// Each graphic carries a `seq` counter. A change in seq means the operator
+// pressed Show or Hide. The first poll after load only records the current
+// seq so a browser-source refresh never replays the last graphic on stream.
+const seen = { shoutout: null, toast: null };
+
+function applyGfx(s) {
+    const preset = s.event_preset || "waveoce";
+    document.documentElement.style.setProperty(
+        "--brand-color",
+        brandColors[preset] || brandColors.waveoce
+    );
+
+    const markSrc = brandMarks[preset] || brandMarks.waveoce;
+    const markImg = byid("toast-mark-img");
+    if (markImg.getAttribute("src") !== markSrc) markImg.src = markSrc;
+
+    const gfx = s.gfx || {};
+
+    const handlers = {
+        shoutout: [showShoutout, hideShoutout],
+        toast:    [showToast,    hideToast],
+    };
+
+    for (const key of Object.keys(handlers)) {
+        const g   = gfx[key] || {};
+        const seq = Number(g.seq) || 0;
+
+        if (seen[key] === null) { seen[key] = seq; continue; }
+        if (seq === seen[key]) continue;
+
+        seen[key] = seq;
+        const [show, hide] = handlers[key];
+        if (g.on) show(g); else hide();
+    }
+}
+
+async function poll() {
+    if (!accountId) return;
+    try {
+        const res = await fetch(`/api/overlay/${accountId}`, { cache: "no-store" });
+        if (!res.ok) return;
+        applyGfx(await res.json());
+    } catch (e) {
+        // network blip - next tick will pick it up
+    }
+}
+
+setInterval(poll, 1000);
+poll();
+</script>
+
+</body>
+</html>
