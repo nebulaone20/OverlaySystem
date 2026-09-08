@@ -34,6 +34,8 @@ let trackedPushSessionId = null;
 let pullSessionId = null;
 let pendingVolume = 100;
 let pendingPanning = 0;
+let connecting = false;
+let retryAfter = 0;
 
 function waitForIceGathering(peerConnection, timeoutMs = 2000) {
   if (peerConnection.iceGatheringState === "complete") return Promise.resolve();
@@ -46,6 +48,27 @@ function waitForIceGathering(peerConnection, timeoutMs = 2000) {
         resolve();
       }
     });
+  });
+}
+
+function waitForConnected(peerConnection, timeoutMs = 15000) {
+  if (peerConnection.connectionState === "connected") return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const done = (fn, arg) => {
+      clearTimeout(timer);
+      peerConnection.removeEventListener("connectionstatechange", onChange);
+      fn(arg);
+    };
+    const timer = setTimeout(
+      () => done(reject, new Error("PeerConnection did not connect within " + timeoutMs + "ms")),
+      timeoutMs
+    );
+    function onChange() {
+      const st = peerConnection.connectionState;
+      if (st === "connected") done(resolve);
+      else if (st === "failed" || st === "closed") done(reject, new Error("PeerConnection " + st));
+    }
+    peerConnection.addEventListener("connectionstatechange", onChange);
   });
 }
 
@@ -79,6 +102,8 @@ function teardown() {
 }
 
 async function connectTo(pushSessionId) {
+  if (connecting) return;
+  connecting = true;
   teardown();
   trackedPushSessionId = pushSessionId;
 
@@ -117,6 +142,10 @@ async function connectTo(pushSessionId) {
     pullSessionId = sessRes.sessionId;
     await pc.setRemoteDescription(sessRes.sessionDescription);
 
+    // Calls answers /tracks with 425 "Session is not ready yet" until the
+    // DTLS/ICE transport is up, so wait for it before pulling.
+    await waitForConnected(pc);
+
     const tracksRes = await fetch(`${API}/api/calls/session/${pullSessionId}/tracks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,10 +172,16 @@ async function connectTo(pushSessionId) {
   } catch (e) {
     console.warn("Pull connect failed:", e);
     teardown();
+    // Back off so a persistent failure does not create a new Calls session
+    // on every 2s poll tick.
+    retryAfter = Date.now() + 5000;
+  } finally {
+    connecting = false;
   }
 }
 
 async function poll() {
+  if (connecting || Date.now() < retryAfter) return;
   try {
     const res = await fetch(`${API}/api/camera/${accountId}/${slot}`);
     if (!res.ok) return;
