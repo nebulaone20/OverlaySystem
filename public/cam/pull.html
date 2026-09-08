@@ -129,13 +129,36 @@ async function connectTo(pushSessionId) {
   });
 
   pc.ontrack = (ev) => {
+    console.log("[pull] track received:", ev.track.kind, "readyState:", ev.track.readyState);
     remoteStream.addTrack(ev.track);
+
+    if (ev.track.kind === "video") {
+      // srcObject was assigned while the stream was still empty, and a track
+      // added afterwards does not reliably start playback. Re-assign so the
+      // element re-reads the stream, then start it explicitly. The element is
+      // muted, so autoplay is permitted; audio is handled separately below via
+      // the Web Audio graph, which is why sound worked while video did not.
+      video.srcObject = remoteStream;
+      const p = video.play();
+      if (p && p.catch) p.catch(err => console.warn("[pull] video.play() rejected:", err));
+    }
+
     if (ev.track.kind === "audio") {
       ensureAudioGraph();
       const src = audioCtx.createMediaStreamSource(new MediaStream([ev.track]));
       src.connect(gainNode);
     }
   };
+
+  // One-shot report so a black frame can be told apart from a missing track.
+  setTimeout(() => {
+    if (!pc || pc.connectionState === "closed") return;
+    console.log("[pull] video status:",
+      "tracks=" + remoteStream.getVideoTracks().length,
+      "paused=" + video.paused,
+      "readyState=" + video.readyState,
+      "size=" + video.videoWidth + "x" + video.videoHeight);
+  }, 4000);
 
   try {
     // sessions/new requires an initial offer even with no local tracks —
