@@ -164,6 +164,7 @@
     <button class="area-btn" data-area="map">Map</button>
     <button class="area-btn" data-area="matches">Matches</button>
     <button class="area-btn" data-area="graphics">Graphics</button>
+    <button class="area-btn" data-area="gfxop">Graphics OP</button>
     <button class="area-btn" data-area="event">Event</button>
     <button class="area-btn" data-area="timeout">Timeout</button>
     <button class="area-btn" data-area="camera">Camera</button>
@@ -295,6 +296,85 @@
         </label>
         <div id="graphics-container" class="hidden" style="margin-top:12px;"></div>
         <button class="btn wide" id="save-graphics" style="margin-top:8px;">Save Graphics</button>
+      </div>
+    </section>
+
+    <!-- GRAPHICS OP -->
+    <section class="panel" id="panel-gfxop">
+      <h2>Graphics OP</h2>
+
+      <p style="color:#888;font-size:12px;margin:-6px 0 14px;">
+        These fire on the separate transparent overlay source:
+        <span id="gfx-url" style="color:#0a69a4;"></span>
+        <button class="btn secondary" id="gfx-copy-url" style="padding:4px 10px;font-size:11px;margin-left:6px;">Copy</button>
+      </p>
+
+      <!-- Shoutout -->
+      <div class="card">
+        <h3 style="font-size:14px;margin:0 0 12px;">Caster / Observer Shoutout</h3>
+
+        <div class="row">
+          <div>
+            <label>Left Label</label>
+            <input type="text" id="gfx-obs-label" placeholder="OBSERVERS" value="OBSERVERS">
+          </div>
+          <div>
+            <label>Right Label</label>
+            <input type="text" id="gfx-cast-label" placeholder="CASTERS" value="CASTERS">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Observer 1</label>
+            <input type="text" id="gfx-obs-1" placeholder="Name">
+          </div>
+          <div>
+            <label>Observer 2</label>
+            <input type="text" id="gfx-obs-2" placeholder="Name (optional)">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <div>
+            <label>Caster 1</label>
+            <input type="text" id="gfx-cast-1" placeholder="Name">
+          </div>
+          <div>
+            <label>Caster 2</label>
+            <input type="text" id="gfx-cast-2" placeholder="Name (optional)">
+          </div>
+        </div>
+
+        <label style="margin-top:10px;">Hold Duration (seconds)</label>
+        <input type="number" id="gfx-shout-duration" min="1" max="60" step="1" value="8">
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn success" id="gfx-shout-show">▶ Show Shoutout</button>
+          <button class="btn danger" id="gfx-shout-hide">■ Hide Now</button>
+        </div>
+        <p style="color:#666;font-size:11px;margin-top:8px;">
+          Both sides slide in together. Leave a side's names blank to keep that side off screen.
+        </p>
+      </div>
+
+      <!-- Toast -->
+      <div class="card" style="margin-top:14px;">
+        <h3 style="font-size:14px;margin:0 0 12px;">Toast Message</h3>
+
+        <label>Message Text</label>
+        <input type="text" id="gfx-toast-text" placeholder="e.g. Map 2 starting in 5 minutes">
+
+        <label style="margin-top:10px;">Hold Duration (seconds)</label>
+        <input type="number" id="gfx-toast-duration" min="1" max="60" step="1" value="8">
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn success" id="gfx-toast-show">▶ Show Toast</button>
+          <button class="btn danger" id="gfx-toast-hide">■ Hide Now</button>
+        </div>
+        <p style="color:#666;font-size:11px;margin-top:8px;">
+          The mark slides up, the bar stretches out to fit the text, then reverses on its own.
+        </p>
       </div>
     </section>
 
@@ -512,6 +592,9 @@ document.getElementById("header-name").textContent =
 document.getElementById("overlay-link").href =
   `/overlay/index.html?id=${accountId}`;
 
+document.getElementById("gfx-url").textContent =
+  `${location.origin}/overlay/gfx.html?id=${accountId}`;
+
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST", headers: { Authorization: "Bearer " + token } });
   localStorage.clear();
@@ -680,6 +763,20 @@ function populateUI(s) {
 
   // Spotify
   byid("spotify-enabled").checked = !!s.spotify_enabled;
+
+  // Graphics OP - restore the last text used, never the on/off state
+  const gfx   = (s.gfx && typeof s.gfx === "object") ? s.gfx : {};
+  const shout = gfx.shoutout || {};
+  const tst   = gfx.toast    || {};
+  byid("gfx-obs-label").value  = shout.obs_label  || "OBSERVERS";
+  byid("gfx-cast-label").value = shout.cast_label || "CASTERS";
+  byid("gfx-obs-1").value  = (shout.observers || [])[0] || "";
+  byid("gfx-obs-2").value  = (shout.observers || [])[1] || "";
+  byid("gfx-cast-1").value = (shout.casters   || [])[0] || "";
+  byid("gfx-cast-2").value = (shout.casters   || [])[1] || "";
+  byid("gfx-shout-duration").value = Math.round((shout.duration || 8000) / 1000);
+  byid("gfx-toast-text").value     = tst.text || "";
+  byid("gfx-toast-duration").value = Math.round((tst.duration || 8000) / 1000);
 
   updateTechPauseVisibility();
   updateTechPauseBtn(!!(s.matches?.tech_pause));
@@ -1221,6 +1318,94 @@ byid("spotify-disconnect").addEventListener("click", () => {
   byid("spotify-connect").classList.remove("hidden");
   byid("spotify-disconnect").classList.add("hidden");
   byid("spotify-user").classList.add("hidden");
+});
+
+
+// ── Graphics OP ───────────────────────────────────────────────────────────────
+// Each graphic carries a `seq` counter. Bumping it is what the overlay watches
+// for, so pressing Show twice with the same text replays the animation.
+function gfxState() {
+  return (state.gfx && typeof state.gfx === "object") ? state.gfx : {};
+}
+
+async function saveGfx(patch) {
+  const merged = { ...gfxState(), ...patch };
+  const res = await fetch(`${API}/api/overlay/${accountId}/gfx`, {
+    method: "PUT",
+    headers: authHeaders(),
+    body: JSON.stringify(merged),
+  });
+  if (!res.ok) { toast("Graphics send failed", "err"); return false; }
+  state.gfx = merged;
+  return true;
+}
+
+function gfxBumpSeq(key) {
+  return (Number(gfxState()[key]?.seq) || 0) + 1;
+}
+
+function gfxSecs(id, fallback) {
+  const v = Number(byid(id).value);
+  return Math.round(Math.max(1, Math.min(60, v || fallback)) * 1000);
+}
+
+byid("gfx-shout-show").addEventListener("click", async () => {
+  const observers = [byid("gfx-obs-1").value, byid("gfx-obs-2").value]
+    .map(v => v.trim()).filter(Boolean);
+  const casters = [byid("gfx-cast-1").value, byid("gfx-cast-2").value]
+    .map(v => v.trim()).filter(Boolean);
+
+  if (!observers.length && !casters.length) {
+    toast("Enter at least one name", "err");
+    return;
+  }
+
+  const ok = await saveGfx({
+    shoutout: {
+      seq: gfxBumpSeq("shoutout"),
+      on: true,
+      obs_label:  byid("gfx-obs-label").value.trim()  || "OBSERVERS",
+      cast_label: byid("gfx-cast-label").value.trim() || "CASTERS",
+      observers,
+      casters,
+      duration: gfxSecs("gfx-shout-duration", 8),
+    },
+  });
+  if (ok) toast("Shoutout sent ✓");
+});
+
+byid("gfx-shout-hide").addEventListener("click", async () => {
+  const ok = await saveGfx({
+    shoutout: { ...gfxState().shoutout, seq: gfxBumpSeq("shoutout"), on: false },
+  });
+  if (ok) toast("Shoutout hidden");
+});
+
+byid("gfx-toast-show").addEventListener("click", async () => {
+  const text = byid("gfx-toast-text").value.trim();
+  if (!text) { toast("Enter some text", "err"); return; }
+
+  const ok = await saveGfx({
+    toast: {
+      seq: gfxBumpSeq("toast"),
+      on: true,
+      text,
+      duration: gfxSecs("gfx-toast-duration", 8),
+    },
+  });
+  if (ok) toast("Toast sent ✓");
+});
+
+byid("gfx-toast-hide").addEventListener("click", async () => {
+  const ok = await saveGfx({
+    toast: { ...gfxState().toast, seq: gfxBumpSeq("toast"), on: false },
+  });
+  if (ok) toast("Toast hidden");
+});
+
+byid("gfx-copy-url").addEventListener("click", () => {
+  navigator.clipboard.writeText(byid("gfx-url").textContent.trim());
+  toast("URL copied ✓");
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
