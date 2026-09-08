@@ -18,4 +18,10 @@ id = "f962df1a994345578ea956ac70fa64f3"
 [vars]
 CALLS_APP_ID = "c0743c17fbe92ea55340ed7552d5d5bf"
 
-TURN_KEY_ID = ""
+# TURN_KEY_ID and TURN_KEY_API_TOKEN are set as SECRETS, not vars:
+#   npx wrangler secret put TURN_KEY_ID
+#   npx wrangler secret put TURN_KEY_API_TOKEN
+# The API token is a long-term credential that mints TURN credentials, so it
+# must never be committed here - this repo is public. Same handling as
+# CALLS_APP_SECRET. Without both set, fetchIceServers falls back to STUN only,
+# which fails on any network that blocks outbound UDP.
