@@ -9,6 +9,7 @@
 | Console | https://overlaysystem.road2.workers.dev/console/index.html |
 | Overlay | https://overlaysystem.road2.workers.dev/overlay/index.html?id=ACCOUNT_ID |
 | Cams | https://overlaysystem.road2.workers.dev/castcams/castcams-index?id=ACCOUNT_ID |
+| Graphics OP | https://overlaysystem.road2.workers.dev/overlay/gfx.html?id=ACCOUNT_ID |
 
 ---
 
@@ -66,6 +67,24 @@ This is where you control the overlay. Each section is in the left sidebar.
 - After a full cycle the map video resumes for 90 seconds before rotating again
 - Click **Save Graphics**
 
+### Graphics OP
+Live graphics that fire over the **game feed**, not the intermission screen. They render on their own transparent browser source - see OBS Setup below.
+
+**Caster / Observer Shoutout**
+- Fill in up to two observer names (left side) and two caster names (right side)
+- The Left/Right Label fields set the heading above each - defaults are OBSERVERS and CASTERS
+- Set the hold duration, then click **Show Shoutout** - both sides slide in off the walls together, hold, then slide back out on their own
+- Leave one side's names blank to keep that side off screen entirely
+- **Hide Now** pulls it early
+
+**Toast Message**
+- Type any text, set the duration, click **Show Toast**
+- The event mark slides up to the middle of screen, the bar stretches out from it to fit the text, then reverses to hide
+- The mark follows your event preset (Road 2 / Wave / Blob), same as the sponsor box
+- Very long messages clamp at 1500px rather than running off the edge
+
+Pressing Show again replays the animation even if the text has not changed.
+
 ### Event
 - Type the event name shown in the timer bar (e.g. `Road 2 Invitationals - Group Stage - Day 1`)
 - Click **Save Event Name**
@@ -95,6 +114,8 @@ Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudfl
 
 ## OBS Setup
 
+### Intermission overlay
+
 1. Add a **Browser Source**
 2. Set the URL to your overlay URL:
    ```
@@ -103,10 +124,24 @@ Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudfl
 3. Set width to **1920** and height to **1080**
 4. Check **Refresh browser when scene becomes active**
 
+### Graphics OP overlay
+
+Add this as a **second** browser source on your in-game scene, above the game capture:
+
+1. Add a **Browser Source**
+2. Set the URL to:
+   ```
+   https://overlaysystem.road2.workers.dev/overlay/gfx.html?id=ACCOUNT_ID
+   ```
+3. Set width to **1920** and height to **1080**
+4. Leave **Refresh browser when scene becomes active** UNCHECKED
+
+The page is fully transparent, so it sits over gameplay without covering it. It deliberately does not replay the last graphic when it loads, which is why the refresh option should stay off - otherwise a scene change could re-fire an old shoutout on stream.
+
 ---
 
 ## Notes
 
-- The overlay polls for updates every **2 seconds** - there may be a short delay between saving in the console and the change appearing on stream
+- The Graphics OP page polls every **1 second**; the intermission overlay polls every **2 seconds** - there may be a short delay between saving in the console and the change appearing on stream
 - Each account is fully isolated - changes made in one console do not affect any other overlay
 - Spotify tokens are stored locally in your browser - if you clear browser data you will need to reconnect
