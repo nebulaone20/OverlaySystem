@@ -113,9 +113,20 @@ async function connectTo(pushSessionId) {
   teardown();
   trackedPushSessionId = pushSessionId;
 
+  const gatheredTypes = new Set();
   pc = new RTCPeerConnection({ iceServers: await fetchIceServers(), bundlePolicy: "max-bundle" });
   remoteStream = new MediaStream();
   video.srcObject = remoteStream;
+
+  pc.addEventListener("iceconnectionstatechange", () => {
+    console.log("[pull] iceConnectionState:", pc.iceConnectionState);
+  });
+  pc.addEventListener("icecandidate", (ev) => {
+    if (ev.candidate && ev.candidate.candidate) {
+      const m = / typ (\w+)/.exec(ev.candidate.candidate);
+      if (m) gatheredTypes.add(m[1]);
+    }
+  });
 
   pc.ontrack = (ev) => {
     remoteStream.addTrack(ev.track);
@@ -126,24 +137,36 @@ async function connectTo(pushSessionId) {
     }
   };
 
-  pc.addEventListener("iceconnectionstatechange", () => {
-    console.log("[pull] iceConnectionState:", pc.iceConnectionState);
-  });
-
   try {
-    // A pull-only session must NOT send an initial offer. With no local media
-    // there is nothing for Calls to build a transport from, which is why an
-    // offer of bare recvonly transceivers either got 425 on /tracks or never
-    // reached "connected". Instead: create an empty session, ask for the
-    // remote tracks, and answer the offer Calls sends back. The transport is
-    // established by that answer.
+    // sessions/new requires an initial offer even with no local tracks —
+    // this establishes the base transport; tracks are pulled in a second step.
+    // We have nothing to send, but max-bundle requires at least one m-line to
+    // form a BUNDLE group, so add recvonly transceivers just to get one.
+    pc.addTransceiver("video", { direction: "recvonly" });
+    pc.addTransceiver("audio", { direction: "recvonly" });
+
+    await pc.setLocalDescription(await pc.createOffer());
+    await waitForIceGathering(pc);
+
     const sessRes = await fetch(`${API}/api/calls/session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        sessionDescription: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
+      }),
     }).then(r => r.json());
     if (!sessRes.sessionId) throw new Error(sessRes.errorDescription || sessRes.error || "session create failed");
     pullSessionId = sessRes.sessionId;
+    await pc.setRemoteDescription(sessRes.sessionDescription);
+
+    // Calls answers /tracks with 425 until the transport is up.
+    try {
+      await waitForConnected(pc);
+    } catch (connErr) {
+      console.warn("[pull] transport never came up. candidate types gathered:",
+        [...gatheredTypes].join(", ") || "none");
+      throw connErr;
+    }
 
     const tracksRes = await fetch(`${API}/api/calls/session/${pullSessionId}/tracks`, {
       method: "POST",
@@ -157,34 +180,20 @@ async function connectTo(pushSessionId) {
     }).then(r => r.json());
 
     if (tracksRes.errorCode || tracksRes.error) throw new Error(tracksRes.errorDescription || tracksRes.error);
-    if (!tracksRes.sessionDescription) throw new Error("Calls returned no offer for the pulled tracks");
 
-    // Calls offers, we answer.
-    await pc.setRemoteDescription(tracksRes.sessionDescription);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await waitForIceGathering(pc);
-
-    const renegRes = await fetch(`${API}/api/calls/session/${pullSessionId}/renegotiate`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionDescription: { type: pc.localDescription.type, sdp: pc.localDescription.sdp },
-      }),
-    }).then(r => r.json()).catch(() => ({}));
-    if (renegRes && (renegRes.errorCode || renegRes.error)) {
-      throw new Error(renegRes.errorDescription || renegRes.error);
+    if (tracksRes.requiresImmediateRenegotiation) {
+      await pc.setRemoteDescription(tracksRes.sessionDescription);
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      await fetch(`${API}/api/calls/session/${pullSessionId}/renegotiate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionDescription: { type: answer.type, sdp: answer.sdp } }),
+      });
     }
-
-    // Health check only - the tracks are already requested by this point.
-    await waitForConnected(pc);
-    console.log("[pull] connected, pulling from", pushSessionId);
-
   } catch (e) {
     console.warn("Pull connect failed:", e);
     teardown();
-    // Back off so a persistent failure does not create a new Calls session
-    // on every 2s poll tick.
     retryAfter = Date.now() + 5000;
   } finally {
     connecting = false;
