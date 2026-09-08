@@ -152,6 +152,7 @@ function defaultOverlay(accountId) {
         graphics_images: "[]",
         matches: "{}",
         spotify_enabled: 1,
+        gfx: "{}",
         updated_at: Math.floor(Date.now() / 1000),
     };
 }
@@ -167,6 +168,7 @@ function parseOverlay(row) {
         event_preset: row.event_preset || "waveoce",
         graphics_images: JSON.parse(row.graphics_images || "[]"),
         matches: JSON.parse(row.matches || "{}"),
+        gfx: JSON.parse(row.gfx || "{}"),
     };
 }
 
@@ -244,13 +246,13 @@ export default {
                     INSERT OR IGNORE INTO overlay_data
                     (account_id, timer_duration, timer_start_at, timer_running, timer_ended,
                      event_name, event_preset, map, map_video, series_type, games_displayed,
-                     graphics_enabled, graphics_images, matches, spotify_enabled, updated_at)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                     graphics_enabled, graphics_images, matches, spotify_enabled, gfx, updated_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 `).bind(
                     d.account_id, d.timer_duration, d.timer_start_at, d.timer_running,
                     d.timer_ended, d.event_name, d.event_preset, d.map, d.map_video, d.series_type,
                     d.games_displayed, d.graphics_enabled, d.graphics_images,
-                    d.matches, d.spotify_enabled, d.updated_at
+                    d.matches, d.spotify_enabled, d.gfx, d.updated_at
                 ).run();
                 row = d;
             }
@@ -276,8 +278,8 @@ export default {
                 INSERT INTO overlay_data
                 (account_id, timer_duration, timer_start_at, timer_running, timer_ended,
                  event_name, event_preset, map, map_video, series_type, games_displayed,
-                 graphics_enabled, graphics_images, matches, spotify_enabled, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 graphics_enabled, graphics_images, matches, spotify_enabled, gfx, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ON CONFLICT(account_id) DO UPDATE SET
                     timer_duration    = excluded.timer_duration,
                     timer_start_at    = excluded.timer_start_at,
@@ -293,6 +295,7 @@ export default {
                     graphics_images   = excluded.graphics_images,
                     matches           = excluded.matches,
                     spotify_enabled   = excluded.spotify_enabled,
+                    gfx               = excluded.gfx,
                     updated_at        = excluded.updated_at
             `).bind(
                 accountId,
@@ -310,8 +313,27 @@ export default {
                 JSON.stringify(body.graphics_images ?? []),
                 JSON.stringify(body.matches ?? {}),
                 body.spotify_enabled ? 1 : 0,
+                JSON.stringify(body.gfx ?? {}),
                 now
             ).run();
+
+            return json({ ok: true, updated_at: now });
+        }
+
+        // ── Granular graphics-op PUT ─────────────────────────────────────────
+        const gfxMatch = pathname.match(/^\/api\/overlay\/([^/]+)\/gfx$/);
+        if (gfxMatch && method === "PUT") {
+            const accountId = gfxMatch[1];
+            const session = await requireAuth(env, request);
+            if (!session) return err("Unauthorised", 401);
+            if (session.accountId !== accountId && !session.isAdmin) return err("Forbidden", 403);
+
+            const body = await request.json();
+            const now = Math.floor(Date.now() / 1000);
+
+            await env.DB.prepare(
+                "UPDATE overlay_data SET gfx = ?, updated_at = ? WHERE account_id = ?"
+            ).bind(JSON.stringify(body ?? {}), now, accountId).run();
 
             return json({ ok: true, updated_at: now });
         }
