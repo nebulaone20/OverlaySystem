@@ -36,7 +36,7 @@
     pointer-events: none;
     z-index: 3;
   }
-  /* Frame windows read from SingleCamINV.png / DuoCamINV.png (1920x1080
+  /* Frame windows read from the preset's cam frames (1920x1080
      canvas): 798x436 inner opening. The video itself is sized to true
      16:9 (775x436) and centered inside that opening so nothing is
      cropped or stretched; cam-bg fills the ~11px pillarbox either side. */
@@ -66,9 +66,21 @@
   let prevLeftUrl = null;
   let prevRightUrl = null;
   let prevSoloUrl = null;
+  let prevPreset = null;
 
   // Track last applied audio per side to avoid spamming postMessage
   let lastAudio = { left: {}, right: {}, solo: {} };
+
+  // Cam frames per event preset. Anything without an entry falls back to INV.
+  const frameSets = {
+    road2: { duo: "DuoCamDAWN-blue.png", solo: "SingleCamDAWN-blue.png" },
+  };
+  const defaultFrames = { duo: "DuoCamINV.png", solo: "SingleCamINV.png" };
+
+  function frameFor(preset, layout) {
+    const set = frameSets[preset] || defaultFrames;
+    return "/castcams/frames/" + encodeURIComponent(set[layout] || defaultFrames[layout]);
+  }
 
   function buildViewUrl(slot) {
     const p = new URLSearchParams({ id: accountId, slot });
@@ -96,6 +108,7 @@
     const cam = (s.matches || {}).camera || {};
     const layout = cam.layout || "none";
     const cams = cam.cams || {};
+    const preset = s.event_preset || "waveoce";
 
     if (layout === "none") {
       container.innerHTML = "";
@@ -108,14 +121,16 @@
       const leftUrl  = buildViewUrl("left");
       const rightUrl = buildViewUrl("right");
 
-      if (prevLayout !== "duo" || prevLeftUrl !== leftUrl || prevRightUrl !== rightUrl) {
+      if (prevLayout !== "duo" || prevLeftUrl !== leftUrl || prevRightUrl !== rightUrl
+          || prevPreset !== preset) {
         container.innerHTML = `
           <div class="cam-bg duo-left"></div>
           <div class="cam-bg duo-right"></div>
           <iframe id="iframe-left"  class="cam-iframe duo-left"  src="${leftUrl  || "about:blank"}" allow="autoplay;fullscreen"></iframe>
           <iframe id="iframe-right" class="cam-iframe duo-right" src="${rightUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          <img class="frame-img" src="/castcams/frames/DuoCamINV.png" alt="">`;
+          <img class="frame-img" src="${frameFor(preset, "duo")}" alt="">`;
         prevLayout   = "duo";
+        prevPreset   = preset;
         prevLeftUrl  = leftUrl;
         prevRightUrl = rightUrl;
         lastAudio    = { left: {}, right: {}, solo: {} };
@@ -133,12 +148,13 @@
       const soloCam  = cams[soloSide] || {};
       const soloUrl  = buildViewUrl(soloSide);
 
-      if (prevLayout !== "solo" || prevSoloUrl !== soloUrl) {
+      if (prevLayout !== "solo" || prevSoloUrl !== soloUrl || prevPreset !== preset) {
         container.innerHTML = `
           <div class="cam-bg solo"></div>
           <iframe id="iframe-solo" class="cam-iframe solo" src="${soloUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          <img class="frame-img" src="/castcams/frames/SingleCamINV.png" alt="">`;
+          <img class="frame-img" src="${frameFor(preset, "solo")}" alt="">`;
         prevLayout  = "solo";
+        prevPreset  = preset;
         prevSoloUrl = soloUrl;
         lastAudio   = { left: {}, right: {}, solo: {} };
       }
