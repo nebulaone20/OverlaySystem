@@ -30,15 +30,19 @@ html, body {
 :root {
     --brand-color: rgb(10, 105, 164);
     --panel-bg: rgba(14, 14, 18, 0.94);
+
+    /* Shoutout geometry. The toast centres itself on this band, so moving
+       the shoutout moves the toast with it - change it here only. */
+    --shout-top: 242px;
+    --shout-height: 132px;
 }
 
 /* ══ SHOUTOUT ══════════════════════════════════════════════════════════════ */
 
 .shout {
     position: absolute;
-    /* Top edge sits where the bottom edge used to be: 110 + 132 = 242. */
-    top: 242px;
-    height: 132px;
+    top: var(--shout-top);
+    height: var(--shout-height);
     min-width: 430px;
     background: var(--panel-bg);
     display: flex;
@@ -110,7 +114,8 @@ html, body {
 
 #toast-wrap {
     position: absolute;
-    top: 540px;
+    /* Vertical centre of the shoutout band. */
+    top: calc(var(--shout-top) + var(--shout-height) / 2);
     left: 960px;
     transform: translate(-50%, -50%);
     display: flex;
@@ -123,7 +128,10 @@ html, body {
     width: 116px;
     height: 116px;
     flex: 0 0 116px;
-    background: var(--brand-color);
+    /* Dark tile so the logo keeps its own contrast on any preset colour;
+       the brand colour reads as the leading accent edge instead. */
+    background: var(--panel-bg);
+    border-left: 8px solid var(--brand-color);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -213,7 +221,7 @@ if (!accountId) {
 const byid = (id) => document.getElementById(id);
 
 const brandColors = {
-    road2:   "rgb(120, 40, 180)",
+    road2:   "#31A2EE",
     waveoce: "rgb(10, 105, 164)",
 };
 
