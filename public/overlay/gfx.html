@@ -110,6 +110,101 @@ html, body {
     align-self: center;
 }
 
+/* ══ CASTER TAGS ═══════════════════════════════════════════════════════════
+
+   One name tag under each caster cam. The artwork is a single PNG (the dark
+   logo block plus the blue wave panel); only the name is drawn by this page,
+   sitting in the panel to the right of the logo block.
+
+   Geometry is measured off the New Dawn duo-cam frame, which puts the cam
+   windows at x 59-889 and x 1008-1838 with their bottom edge at y 776, and
+   the bottom bar starting at y 998. Each tag is centred under its own cam and
+   sits in the middle of that 222px gap. Change --tag-top to move both.
+
+   The artwork is 600x153 including the light grey trim down its right side
+   and along its bottom, which is part of the design. The blue panel the name
+   sits in ends at x 588, where that trim begins, so the name is fitted to the
+   panel rather than to the full width of the file.
+
+   These are a toggle, not a timed graphic, so they also have to survive a
+   browser-source refresh mid-show: see the no-anim path in applyGfx.        */
+
+:root {
+    --tag-w: 600px;
+    --tag-h: 153px;
+    --tag-top: 810px;
+    /* Where the blue panel starts and ends, measured off the artwork. The
+       end is not the file width: the grey trim takes the last 12px. */
+    --tag-text-left: 157px;
+    --tag-text-right: 588px;
+}
+
+.castertag {
+    position: absolute;
+    top: var(--tag-top);
+    width: var(--tag-w);
+    height: var(--tag-h);
+    background: url("caster-tag-dawn.png") no-repeat center / 100% 100%;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    transform: translateY(30px);
+    will-change: transform, opacity;
+    transition: transform 0.5s cubic-bezier(0.22, 0.9, 0.28, 1),
+                opacity 0.34s ease;
+}
+.castertag.show { opacity: 1; transform: translateY(0); }
+
+/* Centred under each cam window. */
+#tag-left  { left: 174px; }
+#tag-right { left: 1123px; transition-delay: 0.09s; }
+
+.castertag-name {
+    /* The blue panel, minus breathing room at each end. */
+    margin-left: var(--tag-text-left);
+    width: calc(var(--tag-text-right) - var(--tag-text-left) - 24px);
+    padding-left: 30px;
+    /* This box does the clipping. The span inside carries the text and is
+       what shrinks, because an element cannot both clip its content and
+       scale itself out of trouble: overflow is resolved on the untransformed
+       box, so scaling the clipper just shrinks an already-cut name. */
+    overflow: hidden;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.26s ease 0.16s;
+}
+.castertag-name span {
+    display: inline-block;
+    font-size: 46px;
+    font-weight: bold;
+    color: #fff;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.castertag.show .castertag-name { opacity: 1; }
+
+/* Applied for one frame when restoring state after a refresh, so the tag is
+   simply there rather than animating in on a live stream. */
+.castertag.no-anim,
+.castertag.no-anim .castertag-name { transition: none !important; }
+
+/* Offscreen twin, purely to measure a name's natural width. */
+#tag-measure {
+    position: absolute;
+    visibility: hidden;
+    pointer-events: none;
+    top: -9999px;
+    left: -9999px;
+    display: inline-block;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    font-family: "Jefferies", Arial, sans-serif;
+}
+
 /* ══ TOAST ═════════════════════════════════════════════════════════════════ */
 
 #toast-wrap {
@@ -202,6 +297,11 @@ html, body {
     <div class="shout-names" id="shout-right-names"></div>
 </div>
 
+<!-- Caster name tags, one under each caster cam -->
+<div class="castertag" id="tag-left"><div class="castertag-name"><span id="tag-left-name"></span></div></div>
+<div class="castertag" id="tag-right"><div class="castertag-name"><span id="tag-right-name"></span></div></div>
+<span id="tag-measure"></span>
+
 <!-- Toast -->
 <div id="toast-wrap">
     <div id="toast-mark"><img id="toast-mark-img" src="" alt=""></div>
@@ -274,6 +374,97 @@ function hideShoutout() {
     byid("shout-right").classList.remove("show");
 }
 
+// ── Caster tags ─────────────────────────────────────────────────────────────
+
+const TAG_FONT_PX = 46;
+
+/**
+ * Fit a name inside the blue panel.
+ *
+ * Names run from four letters to something like "ProfessorBroccoli", so a
+ * fixed size either wastes the panel or runs off the end of it. Every name
+ * gets the full size if it fits; only the ones that do not are stepped down.
+ *
+ * The font-size is what changes, not a transform. Letter-spacing does not
+ * scale with font-size, so the first guess is a ratio and then it is measured
+ * again and nudged, rather than trusted.
+ */
+function fitName(el, text) {
+    el.textContent = text;
+    el.style.fontSize = TAG_FONT_PX + "px";
+    if (!text) return;
+
+    const box = el.parentElement;
+    const room = box.clientWidth - 30;       // the padding-left
+    if (room <= 0) return;
+
+    const measure = byid("tag-measure");
+    const widthAt = (px) => {
+        measure.style.fontSize = px + "px";
+        measure.textContent = text;
+        return measure.offsetWidth;
+    };
+
+    let size = TAG_FONT_PX;
+    let natural = widthAt(size);
+    if (natural <= room) return;
+
+    size = Math.max(20, Math.floor(size * (room / natural)));
+    // Letter-spacing is a fixed number of pixels per character, so the ratio
+    // above slightly overshoots. A few single-pixel steps settle it.
+    for (let i = 0; i < 12 && widthAt(size) > room && size > 20; i++) size -= 1;
+    el.style.fontSize = size + "px";
+}
+
+/**
+ * Re-fit once the webfont has actually loaded.
+ *
+ * Jefferies is a webfont, and a name measured while Arial is still standing in
+ * measures narrower than it will finally draw. That is exactly how a name
+ * fits during the check and is clipped on stream.
+ */
+if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(() => {
+        for (const id of ["tag-left-name", "tag-right-name"]) {
+            const el = byid(id);
+            if (el.textContent) fitName(el, el.textContent);
+        }
+    });
+}
+
+function showTags(g, instant = false) {
+    const sides = [
+        ["tag-left", "tag-left-name", g.left],
+        ["tag-right", "tag-right-name", g.right],
+    ];
+
+    for (const [tagId, nameId, value] of sides) {
+        const tag = byid(tagId);
+        const name = String(value || "").trim();
+
+        if (instant) tag.classList.add("no-anim");
+
+        // A side with no name stays off screen, the same as the shoutout.
+        if (!name) { tag.classList.remove("show"); continue; }
+
+        fitName(byid(nameId), name);
+        tag.classList.add("show");
+    }
+
+    if (instant) {
+        // Force the browser to apply the shown state before transitions are
+        // allowed again, otherwise removing the class animates it after all.
+        void byid("tag-left").offsetWidth;
+        byid("tag-left").classList.remove("no-anim");
+        byid("tag-right").classList.remove("no-anim");
+    }
+}
+
+function hideTags() {
+    byid("tag-left").classList.remove("show");
+    byid("tag-right").classList.remove("show");
+}
+
 // ── Toast ───────────────────────────────────────────────────────────────────
 let toastTimers = [];
 
@@ -332,7 +523,7 @@ function hideToast() {
 // Each graphic carries a `seq` counter. A change in seq means the operator
 // pressed Show or Hide. The first poll after load only records the current
 // seq so a browser-source refresh never replays the last graphic on stream.
-const seen = { shoutout: null, toast: null };
+const seen = { shoutout: null, toast: null, castertags: null };
 
 function applyGfx(s) {
     const preset = s.event_preset || "waveoce";
@@ -346,6 +537,20 @@ function applyGfx(s) {
     if (markImg.getAttribute("src") !== markSrc) markImg.src = markSrc;
 
     const gfx = s.gfx || {};
+
+    // The caster tags are a toggle rather than a timed graphic, so they are
+    // handled apart from the two above. A timed graphic must NOT replay when
+    // OBS reloads the source; a toggle that is up must come straight back, or
+    // refreshing the browser source mid-show quietly drops it off stream.
+    const tags = gfx.castertags || {};
+    const tagSeq = Number(tags.seq) || 0;
+    if (seen.castertags === null) {
+        seen.castertags = tagSeq;
+        if (tags.on) showTags(tags, true); else hideTags();
+    } else if (tagSeq !== seen.castertags) {
+        seen.castertags = tagSeq;
+        if (tags.on) showTags(tags); else hideTags();
+    }
 
     const handlers = {
         shoutout: [showShoutout, hideShoutout],
