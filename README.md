@@ -77,6 +77,15 @@ Live graphics that fire over the **game feed**, not the intermission screen. The
 - Leave one side's names blank to keep that side off screen entirely
 - **Hide Now** pulls it early
 
+**Caster Name Tags**
+- One name tag under each caster cam: type a name into **Left Caster**, **Right Caster**, or both
+- Click **Show Tags** - they slide up into place under the cams and stay there
+- **Hide Tags** takes them away; there is no timer on these, they are a straight toggle
+- Leave a side blank to keep that tag off screen
+- Editing a name and pressing **Show Tags** again updates them in place, no need to hide first
+- Long names shrink to fit the blue panel rather than running past it
+- Unlike the two graphics below, these **do** come back by themselves if the browser source reloads mid-show, so refreshing OBS will not silently drop them off stream
+
 **Toast Message**
 - Type any text, set the duration, click **Show Toast**
 - The event mark slides up to the middle of screen, the bar stretches out from it to fit the text, then reverses to hide
@@ -136,7 +145,11 @@ Add this as a **second** browser source on your in-game scene, above the game ca
 3. Set width to **1920** and height to **1080**
 4. Leave **Refresh browser when scene becomes active** UNCHECKED
 
-The page is fully transparent, so it sits over gameplay without covering it. It deliberately does not replay the last graphic when it loads, which is why the refresh option should stay off - otherwise a scene change could re-fire an old shoutout on stream.
+The page is fully transparent, so it sits over gameplay without covering it. It deliberately does not replay the last **shoutout or toast** when it loads, which is why the refresh option should stay off - otherwise a scene change could re-fire an old shoutout on stream.
+
+The **caster name tags** are the exception, on purpose. They are a toggle rather than a timed graphic, so if they are up when the source reloads they come straight back, without the slide-in animation. A timed graphic replaying itself is a bug; a toggle quietly dropping off stream is also a bug, and they need opposite handling.
+
+The tags are positioned for the **New Dawn duo-cam frame**, sitting under each cam window in the gap above the bottom bar. If that frame's geometry ever changes, `--tag-top` and the two `left` values at the top of `gfx.html` are the only things to move.
 
 ---
 
