@@ -358,6 +358,33 @@
         </p>
       </div>
 
+      <!-- Caster name tags -->
+      <div class="card" style="margin-top:14px;">
+        <h3 style="font-size:14px;margin:0 0 12px;">Caster Name Tags</h3>
+
+        <div class="row">
+          <div>
+            <label>Left Caster</label>
+            <input type="text" id="gfx-tag-left" placeholder="Name under the left cam">
+          </div>
+          <div>
+            <label>Right Caster</label>
+            <input type="text" id="gfx-tag-right" placeholder="Name under the right cam">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <button class="btn success" id="gfx-tags-show">▶ Show Tags</button>
+          <button class="btn danger" id="gfx-tags-hide">■ Hide Tags</button>
+        </div>
+        <p style="color:#666;font-size:11px;margin-top:8px;">
+          A toggle, not a timer: they stay up until you hide them, and come
+          back by themselves if you refresh the browser source. Leave a side
+          blank to keep that tag off screen. Editing a name while they are up
+          and pressing Show again updates them in place.
+        </p>
+      </div>
+
       <!-- Toast -->
       <div class="card" style="margin-top:14px;">
         <h3 style="font-size:14px;margin:0 0 12px;">Toast Message</h3>
@@ -775,6 +802,9 @@ function populateUI(s) {
   byid("gfx-cast-1").value = (shout.casters   || [])[0] || "";
   byid("gfx-cast-2").value = (shout.casters   || [])[1] || "";
   byid("gfx-shout-duration").value = Math.round((shout.duration || 8000) / 1000);
+  const tags = gfx.castertags || {};
+  byid("gfx-tag-left").value  = tags.left  || "";
+  byid("gfx-tag-right").value = tags.right || "";
   byid("gfx-toast-text").value     = tst.text || "";
   byid("gfx-toast-duration").value = Math.round((tst.duration || 8000) / 1000);
 
@@ -1379,6 +1409,28 @@ byid("gfx-shout-hide").addEventListener("click", async () => {
     shoutout: { ...gfxState().shoutout, seq: gfxBumpSeq("shoutout"), on: false },
   });
   if (ok) toast("Shoutout hidden");
+});
+
+byid("gfx-tags-show").addEventListener("click", async () => {
+  const left  = byid("gfx-tag-left").value.trim();
+  const right = byid("gfx-tag-right").value.trim();
+
+  if (!left && !right) { toast("Enter at least one name", "err"); return; }
+
+  const ok = await saveGfx({
+    // No duration: these stay up until Hide. The seq bump is still what the
+    // overlay watches, so pressing Show again after editing a name updates
+    // the tags rather than doing nothing.
+    castertags: { seq: gfxBumpSeq("castertags"), on: true, left, right },
+  });
+  if (ok) toast("Caster tags up ✓");
+});
+
+byid("gfx-tags-hide").addEventListener("click", async () => {
+  const ok = await saveGfx({
+    castertags: { ...gfxState().castertags, seq: gfxBumpSeq("castertags"), on: false },
+  });
+  if (ok) toast("Caster tags hidden");
 });
 
 byid("gfx-toast-show").addEventListener("click", async () => {
