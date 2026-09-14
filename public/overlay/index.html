@@ -351,7 +351,11 @@ let lastUpdatedAt = 0;
 let overlayState  = {};
 
 // ── Game Sections ───────────────────────────────────────────────────────────
-let gameAmount = 1;
+// Starts at 0, not 1. applyState only rebuilds the sections when the incoming
+// amount differs from this, so starting at 1 meant a single-game state matched
+// on the first poll and the box was never built: an empty match box on every
+// load, which is every scene change with "refresh when active" ticked.
+let gameAmount = 0;
 
 function createGameSections(amount) {
     amount = Math.max(1, Math.min(5, amount));
@@ -367,32 +371,32 @@ function createGameSections(amount) {
         const section = document.createElement("div");
         section.className = "game-section";
         section.innerHTML = `
-            <div style="position:absolute;top:80px;left:50%;transform:translateX(-50%);
-                width:210px;height:210px;background-size:contain;background-repeat:no-repeat;
+            <div style="position:absolute;top:42px;left:50%;transform:translateX(-50%);
+                width:175px;height:175px;background-size:contain;background-repeat:no-repeat;
                 background-position:center;" id="logo-top-1"></div>
 
-            <div style="position:absolute;top:580px;left:50%;transform:translateX(-50%);
-                width:210px;height:210px;background-size:contain;background-repeat:no-repeat;
+            <div style="position:absolute;top:385px;left:50%;transform:translateX(-50%);
+                width:175px;height:175px;background-size:contain;background-repeat:no-repeat;
                 background-position:center;" id="logo-bottom-1"></div>
 
-            <div style="position:absolute;top:360px;left:50%;transform:translateX(-50%);
+            <div style="position:absolute;top:231px;left:50%;transform:translateX(-50%);
                 color:white;font-size:18px;font-weight:bold;" id="tag-top-1">[TOP]</div>
 
-            <div style="position:absolute;top:495px;left:50%;transform:translateX(-50%);
+            <div style="position:absolute;top:350px;left:50%;transform:translateX(-50%);
                 color:white;font-size:18px;font-weight:bold;" id="tag-bottom-1">[BOT]</div>
 
-            <div style="position:absolute;top:401px;left:50%;transform:translateX(-50%);
+            <div style="position:absolute;top:270px;left:50%;transform:translateX(-50%);
                 color:white;font-size:60px;font-weight:bold;">VS</div>
 
-            <div style="position:absolute;top:397px;left:32%;transform:translateX(-50%);
+            <div style="position:absolute;top:266px;left:32%;transform:translateX(-50%);
                 color:white;font-size:65px;font-weight:bold;" id="score-left-1">0</div>
 
-            <div style="position:absolute;top:397px;left:68%;transform:translateX(-50%);
+            <div style="position:absolute;top:266px;left:68%;transform:translateX(-50%);
                 color:white;font-size:65px;font-weight:bold;" id="score-right-1">0</div>
 
-            <div style="position:absolute;left:35px;top:435px;width:90px;height:5px;
+            <div style="position:absolute;left:35px;top:303px;width:90px;height:5px;
                 background:var(--brand-color,rgb(10,105,164));"></div>
-            <div style="position:absolute;right:35px;top:435px;width:90px;height:5px;
+            <div style="position:absolute;right:35px;top:303px;width:90px;height:5px;
                 background:var(--brand-color,rgb(10,105,164));"></div>
         `;
         container.appendChild(section);
