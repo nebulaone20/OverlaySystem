@@ -26,7 +26,12 @@
     background: #6F068E; /* matches the frame artwork's interior fill */
     z-index: 1;
   }
-  .cam-iframe { z-index: 2; }
+  /* Video renders ABOVE the frame. The DAWN frames have their cam windows
+     painted in rather than cut out, so a frame sitting on top hides the video
+     entirely. The video is positioned inside the window, so the frame's border
+     art is unaffected, and the frame's own interior fill becomes the pillarbox
+     either side of the 16:9 video. */
+  .cam-iframe { z-index: 4; }
   .frame-img {
     position: absolute;
     top: 0;
