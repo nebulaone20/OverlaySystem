@@ -100,9 +100,59 @@ Pressing Show again replays the animation even if the text has not changed.
 
 ### Timeout
 - Set remaining timeouts for each team
-- Select which side called the timeout
-- Check **Show Timeout Banner** to display it on the overlay
+- Set **Attacking Side**. This is the one thing to keep current: set it at the
+  start of each half and the Stream Deck's Attacker and Defender buttons stay
+  right all the way through it
+- **Called By** is the side that called this one
+- Check **Show Timeout Banner** to display it, and untick it to take it down
 - Click **Save Timeout**
+
+The banner renders on the **Graphics OP** overlay, not the intermission one, so
+it sits over gameplay where a timeout actually happens. It is red when the team
+that called it is attacking and green when they are defending, and it shows that
+team's logo and tricode. The small boxes down each side are the timeouts still in
+hand: filled is one left.
+
+A timeout raised here stays up until you untick the box. One fired from the
+Stream Deck takes itself down after 58 seconds.
+
+### Stream Deck
+
+Five buttons, no plugin. In the Stream Deck app, drag a **System > Website**
+action onto a key, paste the URL from the console's **Stream Deck** panel, and
+tick **Access in background**. Without that box the deck opens a browser tab
+every time you press it.
+
+| Button | What it does |
+|---|---|
+| Shoutout | Fires the shoutout as it is set up in Graphics OP |
+| Caster tags | Toggle. Press for up, press again for down |
+| Toast | Fires the toast message as it is set up in Graphics OP |
+| Attacker timeout | Red banner for the attacking team, takes one off their count, 58 seconds |
+| Defender timeout | Green banner for the defending team, same |
+
+There is a sixth URL, **Clear timeout**, which takes the banner down early. It is
+there for a misfire; only give it a key if you have one going spare.
+
+The three graphics buttons fire whatever is currently typed into Graphics OP.
+They do not carry content of their own, so the words are still yours to set in
+the console before the show.
+
+**About the key.** These URLs carry one, because the deck can only fetch a plain
+web address and has nowhere to put a password. It is not your login: it can only
+press these six buttons, it can never read or change anything else, and it is
+never included in the overlay state the browser source polls. **Regenerate key**
+in the console mints a new one and every URL already in your deck stops working
+immediately, so treat it like the links themselves - fine in your own Stream
+Deck, not in a screenshot or a shared channel.
+
+Run the migration once before any of this works:
+
+```
+npx wrangler d1 execute overlay-db --remote --file=migrate-deck.sql
+```
+
+"duplicate column name: deck_key" means it already applied.
 
 ### Camera
 Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudflare.com/realtime/sfu/) (Cloudflare's own WebRTC infrastructure) instead of a third-party service - nothing leaves your Cloudflare account.
