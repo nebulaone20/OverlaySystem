@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS overlay_data (
     matches TEXT NOT NULL DEFAULT '{}',
     spotify_enabled INTEGER NOT NULL DEFAULT 1,
     gfx TEXT NOT NULL DEFAULT '{}',
+    deck_key TEXT NOT NULL DEFAULT '',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
     FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
 );
