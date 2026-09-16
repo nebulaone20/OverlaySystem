@@ -1587,9 +1587,37 @@ function renderDeck(key) {
     field.value = url;
     field.style.cssText = "font-size:11px;";
 
+    // The key image for this button, with the icon itself as the preview so
+    // there is nothing to match up by hand: what you see is what downloads.
+    const iconSrc = `deck-icons/deck-${action}.png`;
+    const art = document.createElement("div");
+    art.style.cssText = "display:flex;align-items:center;gap:10px;margin-top:8px;";
+
+    const thumb = document.createElement("img");
+    thumb.src = iconSrc;
+    thumb.alt = "";
+    thumb.width = 44;
+    thumb.height = 44;
+    thumb.style.cssText = "border-radius:6px;flex:none;";
+
+    const grab = document.createElement("a");
+    grab.href = iconSrc;
+    grab.download = `deck-${action}.png`;
+    grab.textContent = "Download icon";
+    grab.style.cssText = "color:#0a69a4;font-size:12px;text-decoration:none;";
+
+    const hint = document.createElement("span");
+    hint.style.cssText = "color:#666;font-size:11px;";
+    hint.textContent = "288x288 PNG. Clear the key's Title in the Stream Deck app - the words are in the image.";
+
+    art.appendChild(thumb);
+    art.appendChild(grab);
+    art.appendChild(hint);
+
     row.appendChild(head);
     row.appendChild(desc);
     row.appendChild(field);
+    row.appendChild(art);
     list.appendChild(row);
   });
 
