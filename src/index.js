@@ -7,6 +7,9 @@
 //   PUT    /api/overlay/:accountId          (console saves to this)
 //   GET    /api/overlay/:accountId/timer    (granular timer endpoint)
 //   PUT    /api/overlay/:accountId/timer
+//   GET    /api/deck-key/:accountId         (console reads the Stream Deck key)
+//   POST   /api/deck-key/:accountId         (console regenerates it)
+//   GET    /api/deck/:accountId/:action     (one Stream Deck button, key in URL)
 //   GET    /api/admin/accounts              (admin only)
 //   POST   /api/admin/accounts              (admin only - create account)
 //   DELETE /api/admin/accounts/:id          (admin only)
@@ -153,14 +156,20 @@ function defaultOverlay(accountId) {
         matches: "{}",
         spotify_enabled: 1,
         gfx: "{}",
+        deck_key: "",
         updated_at: Math.floor(Date.now() / 1000),
     };
 }
 
 function parseOverlay(row) {
     if (!row) return null;
+    // The overlay GET is public: the browser source in OBS polls it with no
+    // login. The Stream Deck key must never ride along with it, or publishing
+    // the overlay URL would hand out the ability to fire graphics on stream.
+    // The console reads the key from its own authenticated route instead.
+    const { deck_key, ...rest } = row;
     return {
-        ...row,
+        ...rest,
         timer_running: !!row.timer_running,
         timer_ended: !!row.timer_ended,
         graphics_enabled: !!row.graphics_enabled,
@@ -336,6 +345,142 @@ export default {
             ).bind(JSON.stringify(body ?? {}), now, accountId).run();
 
             return json({ ok: true, updated_at: now });
+        }
+
+        // ── Stream Deck ──────────────────────────────────────────────────────
+        // One GET per button, because the deck's built in Website action can
+        // only do a plain GET with "Access in background" ticked. That is the
+        // whole integration: no plugin, no app, nothing to install.
+        //
+        // A GET that changes things is not something to do lightly. These are
+        // deliberately the only ones on the whole Worker, they are the narrow
+        // set a broadcast operator needs under their fingers, none of them can
+        // read anything back, and they are gated on a key that exists only for
+        // this and can be regenerated in one click.
+
+        const TIMEOUT_SECONDS = 58;
+
+        /** Constant time compare, so a wrong key cannot be found byte by byte. */
+        function sameKey(a, b) {
+            if (typeof a !== "string" || typeof b !== "string") return false;
+            if (!a || !b || a.length !== b.length) return false;
+            let diff = 0;
+            for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+            return diff === 0;
+        }
+
+        // ── GET|POST /api/deck-key/:accountId ── console only, never the deck
+        const deckKeyMatch = pathname.match(/^\/api\/deck-key\/([^/]+)$/);
+        if (deckKeyMatch && (method === "GET" || method === "POST")) {
+            const accountId = deckKeyMatch[1];
+            const session = await requireAuth(env, request);
+            if (!session) return err("Unauthorised", 401);
+            if (session.accountId !== accountId && !session.isAdmin) return err("Forbidden", 403);
+
+            const row = await env.DB.prepare(
+                "SELECT deck_key FROM overlay_data WHERE account_id = ?"
+            ).bind(accountId).first();
+            if (!row) return err("No overlay for that account", 404);
+
+            // POST always mints a new one, which is what revoking looks like:
+            // every URL carrying the old key stops working immediately.
+            let key = row.deck_key || "";
+            if (method === "POST" || !key) {
+                key = generateId(24);
+                await env.DB.prepare(
+                    "UPDATE overlay_data SET deck_key = ? WHERE account_id = ?"
+                ).bind(key, accountId).run();
+            }
+            return json({ key });
+        }
+
+        // ── GET /api/deck/:accountId/:action?key=… ── the buttons themselves
+        const deckMatch = pathname.match(/^\/api\/deck\/([^/]+)\/([a-z-]{1,24})$/);
+        if (deckMatch && (method === "GET" || method === "POST")) {
+            const [, accountId, action] = deckMatch;
+
+            const row = await env.DB.prepare(
+                "SELECT * FROM overlay_data WHERE account_id = ?"
+            ).bind(accountId).first();
+
+            // A wrong key, an unknown account and an account with no key yet
+            // all answer the same plain 404. Nothing here confirms that a
+            // given account exists, or that a key is close to right.
+            if (!row || !row.deck_key) return err("Not found", 404);
+            if (!sameKey(url.searchParams.get("key") || "", row.deck_key)) {
+                return err("Not found", 404);
+            }
+
+            const now = Math.floor(Date.now() / 1000);
+            const gfx = JSON.parse(row.gfx || "{}");
+            const matches = JSON.parse(row.matches || "{}");
+
+            /** Fire a timed graphic: same content, one higher seq, on. */
+            const fire = (key) => {
+                const g = gfx[key] || {};
+                gfx[key] = { ...g, on: true, seq: (Number(g.seq) || 0) + 1 };
+            };
+
+            /** Flip a toggle graphic and say which way it went. */
+            const toggle = (key) => {
+                const g = gfx[key] || {};
+                const on = !g.on;
+                gfx[key] = { ...g, on, seq: (Number(g.seq) || 0) + 1 };
+                return on;
+            };
+
+            /**
+             * Raise the timeout banner for whichever side is attacking or
+             * defending, and spend one of that team's timeouts.
+             *
+             * The console says which side is on attack; the button says attack
+             * or defence. Those two together are the calling team, so the deck
+             * never has to know which end of the server the teams are on.
+             */
+            const timeout = (wantAttack) => {
+                const to = matches.timeout || {};
+                const atk = to.atk === "right" ? "right" : "left";
+                const side = wantAttack ? atk : (atk === "left" ? "right" : "left");
+                const left = Math.max(0, Math.min(2, Number(to.left ?? 2)));
+                const right = Math.max(0, Math.min(2, Number(to.right ?? 2)));
+
+                matches.timeout = {
+                    ...to,
+                    left: side === "left" ? Math.max(0, left - 1) : left,
+                    right: side === "right" ? Math.max(0, right - 1) : right,
+                    atk,
+                    side,
+                    visible: true,
+                    // The overlay takes it down at this moment. Kept as an
+                    // absolute time rather than a countdown so a browser source
+                    // that reloads mid timeout comes back with the right amount
+                    // of it left, instead of starting the 58 again.
+                    until: now + TIMEOUT_SECONDS,
+                };
+                return matches.timeout;
+            };
+
+            let result = { ok: true, action };
+
+            switch (action) {
+                case "shoutout":      fire("shoutout"); break;
+                case "toast":         fire("toast"); break;
+                case "castertags":    result.on = toggle("castertags"); break;
+                case "timeout-atk":   result.timeout = timeout(true); break;
+                case "timeout-def":   result.timeout = timeout(false); break;
+                case "timeout-clear":
+                    matches.timeout = { ...(matches.timeout || {}), visible: false, until: 0 };
+                    result.timeout = matches.timeout;
+                    break;
+                default:
+                    return err("Unknown action", 404);
+            }
+
+            await env.DB.prepare(
+                "UPDATE overlay_data SET gfx = ?, matches = ?, updated_at = ? WHERE account_id = ?"
+            ).bind(JSON.stringify(gfx), JSON.stringify(matches), now, accountId).run();
+
+            return json(result);
         }
 
         // ── Granular timer PUT ───────────────────────────────────────────────
