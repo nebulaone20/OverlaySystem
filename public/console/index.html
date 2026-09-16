@@ -169,6 +169,7 @@
     <button class="area-btn" data-area="timeout">Timeout</button>
     <button class="area-btn" data-area="camera">Camera</button>
     <button class="area-btn" data-area="spotify">Spotify</button>
+    <button class="area-btn" data-area="deck">Stream Deck</button>
   </nav>
 
   <div class="content">
@@ -438,12 +439,21 @@
         </div>
         <div class="row">
           <div>
-            <label>Active Side</label>
+            <label>Called By</label>
             <select id="timeout-side">
               <option value="left">Left</option>
               <option value="right">Right</option>
             </select>
           </div>
+          <div>
+            <label>Attacking Side</label>
+            <select id="timeout-atk">
+              <option value="left">Left</option>
+              <option value="right">Right</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
           <div style="padding-top:20px;">
             <label><input type="checkbox" id="timeout-visible"> Show Timeout Banner</label>
           </div>
@@ -603,6 +613,45 @@
       </div>
     </section>
 
+    <!-- STREAM DECK -->
+    <section class="panel" id="panel-deck">
+      <h2>Stream Deck</h2>
+
+      <p style="color:#888;font-size:12px;margin:-6px 0 14px;">
+        Five buttons, no plugin. In the Stream Deck app drag a
+        <strong>System &gt; Website</strong> action onto a key, paste the URL,
+        and tick <strong>Access in background</strong>. That last box is the
+        whole trick: without it the deck opens a browser tab every press.
+      </p>
+
+      <div class="card">
+        <h3 style="font-size:14px;margin:0 0 6px;">Your key</h3>
+        <p style="color:#888;font-size:12px;margin:0 0 12px;">
+          These URLs carry a key, because the deck can only send a plain web
+          address and has nowhere to put a password. It is not your login: it
+          can only press these buttons, it can never read or change anything
+          else, and regenerating it kills every old URL at once. Treat it like
+          the links themselves - fine in your own Stream Deck, not in a
+          screenshot or a shared channel.
+        </p>
+        <div class="row">
+          <button class="btn" id="deck-show">Show my URLs</button>
+          <button class="btn secondary" id="deck-regen">Regenerate key</button>
+        </div>
+      </div>
+
+      <div class="card hidden" id="deck-urls" style="margin-top:14px;">
+        <h3 style="font-size:14px;margin:0 0 12px;">The buttons</h3>
+        <div id="deck-list"></div>
+        <p style="color:#888;font-size:12px;margin:14px 0 0;">
+          The two timeout buttons take one off that team's count and put the
+          banner up for 58 seconds, then take it down on their own. Which team
+          is attacking comes from the Timeout panel, so set that at the start of
+          each half and the buttons stay right all the way through it.
+        </p>
+      </div>
+    </section>
+
   </div>
 </div>
 
@@ -738,8 +787,16 @@ function populateUI(s) {
   const to = matches.timeout || {};
   byid("timeout-left").value = to.left ?? 2;
   byid("timeout-right").value = to.right ?? 2;
-  byid("timeout-visible").checked = !!to.visible;
   byid("timeout-side").value = to.side || "left";
+  // Which side is attacking. With the side that called it, this gives the
+  // banner its colour, red on attack and green on defence, and it is what lets
+  // the Stream Deck buttons say Attacker and Defender rather than Left and
+  // Right, which nobody can keep straight mid round.
+  byid("timeout-atk").value = to.atk === "right" ? "right" : "left";
+  // A deck fired timeout ends at `until` without the state being rewritten,
+  // so an expired one is not really showing, whatever visible says.
+  const live = !to.until || to.until > Math.floor(Date.now() / 1000);
+  byid("timeout-visible").checked = !!to.visible && live;
 
   // Camera
   const cam = matches.camera || {};
@@ -1167,6 +1224,9 @@ byid("save-timeout").addEventListener("click", () => {
         right: parseInt(byid("timeout-right").value, 10),
         visible: byid("timeout-visible").checked,
         side: byid("timeout-side").value,
+        atk: byid("timeout-atk").value,
+        // Raised by hand, so no end time: it stays up until it is unticked.
+        until: 0,
       },
     },
   });
@@ -1458,6 +1518,95 @@ byid("gfx-toast-hide").addEventListener("click", async () => {
 byid("gfx-copy-url").addEventListener("click", () => {
   navigator.clipboard.writeText(byid("gfx-url").textContent.trim());
   toast("URL copied ✓");
+});
+
+// ── Stream Deck ───────────────────────────────────────────────────────────────
+// Five URLs, one per key. The deck's built in Website action can only fetch a
+// plain address, so the key travels in the query string; it is minted by the
+// Worker and only ever fetched from here, over an authenticated route, so it
+// is never part of the public overlay state the browser source polls.
+
+const DECK_BUTTONS = [
+  ["shoutout",     "Shoutout",          "Fires the caster and observer shoutout as it is set up in Graphics OP."],
+  ["castertags",   "Caster tags",       "Toggle. Press once for up, again for down."],
+  ["toast",        "Toast",             "Fires the toast message as it is set up in Graphics OP."],
+  ["timeout-atk",  "Attacker timeout",  "Red banner, takes one off the attacking team, 58 seconds."],
+  ["timeout-def",  "Defender timeout",  "Green banner, takes one off the defending team, 58 seconds."],
+  ["timeout-clear", "Clear timeout (spare)", "Takes the banner down early. Only worth a key if you have one going spare."],
+];
+
+async function deckKey(regenerate) {
+  const res = await fetch(`${API}/api/deck-key/${accountId}`, {
+    method: regenerate ? "POST" : "GET",
+    headers: authHeaders(),
+  });
+  if (!res.ok) { toast("Could not get the key", "err"); return null; }
+  return (await res.json()).key;
+}
+
+function renderDeck(key) {
+  const list = byid("deck-list");
+  list.innerHTML = "";
+
+  DECK_BUTTONS.forEach(([action, label, note], i) => {
+    const url = `${location.origin}/api/deck/${encodeURIComponent(accountId)}`
+      + `/${action}?key=${encodeURIComponent(key)}`;
+
+    const row = document.createElement("div");
+    row.style.cssText = "margin-bottom:14px;padding-bottom:14px;"
+      + (i < DECK_BUTTONS.length - 1 ? "border-bottom:1px solid #222;" : "");
+
+    const head = document.createElement("div");
+    head.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:6px;";
+
+    const name = document.createElement("strong");
+    name.style.cssText = "font-size:13px;";
+    name.textContent = label;
+
+    const copy = document.createElement("button");
+    copy.className = "btn secondary";
+    copy.style.cssText = "padding:4px 10px;font-size:11px;";
+    copy.textContent = "Copy";
+    copy.addEventListener("click", () => {
+      navigator.clipboard.writeText(url).catch(() => {});
+      toast(label + " URL copied ✓");
+    });
+
+    head.appendChild(name);
+    head.appendChild(copy);
+
+    const desc = document.createElement("div");
+    desc.style.cssText = "color:#888;font-size:12px;margin-bottom:6px;";
+    desc.textContent = note;
+
+    // Read only, so the URL can be seen and selected but not edited into
+    // something that quietly does not work.
+    const field = document.createElement("input");
+    field.type = "text";
+    field.readOnly = true;
+    field.value = url;
+    field.style.cssText = "font-size:11px;";
+
+    row.appendChild(head);
+    row.appendChild(desc);
+    row.appendChild(field);
+    list.appendChild(row);
+  });
+
+  byid("deck-urls").classList.remove("hidden");
+}
+
+byid("deck-show").addEventListener("click", async () => {
+  const key = await deckKey(false);
+  if (key) renderDeck(key);
+});
+
+byid("deck-regen").addEventListener("click", async () => {
+  // No undo, and every URL already sitting in the deck stops working, so this
+  // asks first.
+  if (!confirm("Regenerate the key? Every URL already in your Stream Deck will stop working and has to be pasted again.")) return;
+  const key = await deckKey(true);
+  if (key) { renderDeck(key); toast("New key. Paste the URLs again."); }
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
