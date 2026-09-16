@@ -144,7 +144,7 @@ html, body {
     top: var(--tag-top);
     width: var(--tag-w);
     height: var(--tag-h);
-    background: url("./caster-tag-dawn.png") no-repeat center / 100% 100%;
+    background: url("caster-tag-dawn.png") no-repeat center / 100% 100%;
     z-index: 25;
     display: flex;
     align-items: center;
@@ -204,6 +204,143 @@ html, body {
     white-space: nowrap;
     font-family: "Jefferies", Arial, sans-serif;
 }
+
+/* ══ TIMEOUT ═══════════════════════════════════════════════════════════════
+   The banner the operator raises from the console's Timeout panel. It is a
+   toggle, not a timed graphic, so it is handled the way the caster tags are:
+   if it is up when the browser source reloads it comes straight back, without
+   the animation. A timed graphic replaying itself is a bug; a toggle quietly
+   dropping off stream is also a bug, and they need opposite handling.
+
+   Two colours, set by whether the team that called it is attacking or
+   defending, because that is the first thing anyone watching wants to know. */
+
+#timeout {
+    position: absolute;
+    top: 412px;                     /* centred: (1080 - 255) / 2 */
+    left: 50%;
+    width: 1050px;
+    height: 255px;
+    margin-left: -525px;
+    overflow: hidden;
+    z-index: 40;
+    clip-path: polygon(0 5px, 100% 0, 100% calc(100% - 5px), 0 100%);
+
+    --to-accent: 255, 53, 73;       /* attack, FF3549 */
+    --to-ghost: rgba(74, 12, 20, 0.72);
+
+    background:
+        radial-gradient(120% 180% at 22% 120%, rgba(var(--to-accent), 0.60) 0%, rgba(var(--to-accent), 0) 58%),
+        radial-gradient(120% 180% at 82% 120%, rgba(var(--to-accent), 0.40) 0%, rgba(var(--to-accent), 0) 60%),
+        linear-gradient(180deg, #17202f 0%, #131a27 100%);
+
+    opacity: 0;
+    transform: translateY(-20px) scale(0.985);
+    transition: opacity 0.42s ease, transform 0.42s cubic-bezier(0.22, 0.9, 0.28, 1);
+}
+
+/* Defence. Only the two colours move; every dimension above is shared. */
+#timeout.def {
+    --to-accent: 40, 208, 145;      /* 28D091 */
+    --to-ghost: rgba(8, 54, 40, 0.78);
+}
+
+#timeout.up {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* Coming back after a source reload: already up, so no animation to replay. */
+#timeout.instant { transition: none; }
+
+/* Darkens both ends so the banner fades into gameplay rather than ending in
+   a hard edge. */
+.to-edge {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg,
+        #0b0d12 0%, rgba(11, 13, 18, 0) 10%,
+        rgba(11, 13, 18, 0) 90%, #0b0d12 100%);
+}
+
+.to-ghost {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font: bold 132px "Jefferies", Arial, sans-serif;
+    letter-spacing: 0.02em;
+    transform: scaleY(1.42);
+    color: var(--to-ghost);
+    white-space: nowrap;
+}
+
+/* Timeouts remaining, two per side. A filled box is one still in hand. */
+.to-dots {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.to-dots.left  { left: 44px; }
+.to-dots.right { right: 44px; }
+
+.to-dots span {
+    display: block;
+    width: 15px;
+    height: 15px;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+.to-dots i {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+.to-dots i.on { opacity: 1; }
+
+.to-mid {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+}
+
+.to-title {
+    font: bold 66px "Jefferies", Arial, sans-serif;
+    letter-spacing: 0.08em;
+    color: #fff;
+    line-height: 1;
+}
+
+.to-team {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    font: bold 27px "Jefferies", Arial, sans-serif;
+    letter-spacing: 0.12em;
+    color: #fff;
+}
+
+#to-logo {
+    width: 76px;
+    height: 76px;
+    flex: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+/* A team with no logo set closes the gap rather than leaving a hole. */
+#to-logo.empty { display: none; }
 
 /* ══ TOAST ═════════════════════════════════════════════════════════════════ */
 
@@ -301,6 +438,22 @@ html, body {
 <div class="castertag" id="tag-left"><div class="castertag-name"><span id="tag-left-name"></span></div></div>
 <div class="castertag" id="tag-right"><div class="castertag-name"><span id="tag-right-name"></span></div></div>
 <span id="tag-measure"></span>
+
+<!-- Timeout banner -->
+<div id="timeout">
+    <div class="to-edge"></div>
+    <div class="to-ghost">TIMEOUT</div>
+    <div class="to-dots left"><span><i id="to-l1"></i></span><span><i id="to-l2"></i></span></div>
+    <div class="to-dots right"><span><i id="to-r1"></i></span><span><i id="to-r2"></i></span></div>
+    <div class="to-mid">
+        <div class="to-title">TIMEOUT</div>
+        <div class="to-team">
+            <span id="to-side">ATK</span>
+            <div id="to-logo"></div>
+            <span id="to-tri"></span>
+        </div>
+    </div>
+</div>
 
 <!-- Toast -->
 <div id="toast-wrap">
@@ -519,6 +672,101 @@ function hideToast() {
     toastTimers.push(setTimeout(() => { mark.classList.remove("up"); }, 640));
 }
 
+// ── Timeout ─────────────────────────────────────────────────────────────────
+// State comes from where the console already writes it, matches.timeout, so
+// the Timeout panel did not have to change shape to get a graphic.
+//
+//   { left, right, atk: "left" | "right", side: "left" | "right",
+//     visible, until }
+//
+// atk is which side is attacking, set in the console. side is who called this
+// one. Those two together give the colour, red on attack and green on defence,
+// without the operator having to think about it: the Stream Deck says attack
+// or defence and the overlay works out which team that is.
+//
+// until is the moment a deck fired timeout comes down, as an absolute time
+// rather than a countdown, so a browser source that reloads mid timeout comes
+// back with the right amount of it left instead of starting the 58 again. A
+// timeout raised by hand from the console has no until and stays up until the
+// operator unticks it.
+
+let timeoutUp = null;   // null until the first poll, so a reload can tell the
+                        // difference between "already up" and "just raised"
+let timeoutTimer = null;
+
+function fillDots(prefix, count) {
+    const n = Math.max(0, Math.min(2, Number(count) || 0));
+    byid(prefix + "1").classList.toggle("on", n >= 1);
+    byid(prefix + "2").classList.toggle("on", n >= 2);
+}
+
+function paintTimeout(to, game) {
+    const el = byid("timeout");
+    const right = to.side === "right";
+    // Defending is simply "called it, and is not the attacking side".
+    const defending = (to.atk === "right" ? "right" : "left") !== to.side;
+
+    el.classList.toggle("def", defending);
+    byid("to-side").textContent = defending ? "DEF" : "ATK";
+
+    const tri = (right ? game.right_tri : game.left_tri)
+        || (right ? game.right_tag : game.left_tag) || "";
+    byid("to-tri").textContent = String(tri).trim().toUpperCase();
+
+    const logo = right ? game.right_logo : game.left_logo;
+    const logoEl = byid("to-logo");
+    logoEl.style.backgroundImage = logo ? `url(${logo})` : "";
+    logoEl.classList.toggle("empty", !logo);
+
+    // Left dots are the left team's timeouts in hand, right the right team's,
+    // whichever side called this one.
+    fillDots("to-l", to.left);
+    fillDots("to-r", to.right);
+}
+
+function applyTimeout(s) {
+    const to = (s.matches && s.matches.timeout) || {};
+    const game = ((s.matches && s.matches.matches) || {}).game1 || {};
+    const el = byid("timeout");
+    const until = Number(to.until) || 0;
+    const left = until ? until - Math.floor(Date.now() / 1000) : 0;
+
+    // An expired timeout is down, whatever the stored visible says. The state
+    // is not rewritten when it ends, so this is what makes it end.
+    const want = !!to.visible && (!until || left > 0);
+
+    // Polling alone would leave it up to a second past its end. The timer is
+    // what makes it come down on the second; the poll above is the backstop
+    // if the tab was throttled or the state changed underneath it.
+    clearTimeout(timeoutTimer);
+    timeoutTimer = null;
+    if (want && until) {
+        timeoutTimer = setTimeout(() => {
+            byid("timeout").classList.remove("up");
+            timeoutUp = false;
+        }, left * 1000);
+    }
+
+    // Repaint whenever it is up, so changing a count or a side while the
+    // banner is on stream updates it rather than waiting for a hide and show.
+    if (want) paintTimeout(to, game);
+
+    if (timeoutUp === want) return;
+
+    const first = timeoutUp === null;
+    timeoutUp = want;
+
+    if (first && !want) return;          // nothing on screen, nothing to do
+    if (first) {
+        // Up already when the source reloaded: come back without the animation.
+        el.classList.add("instant", "up");
+        void el.offsetWidth;             // commit before transitions return
+        el.classList.remove("instant");
+        return;
+    }
+    el.classList.toggle("up", want);
+}
+
 // ── D1 polling ──────────────────────────────────────────────────────────────
 // Each graphic carries a `seq` counter. A change in seq means the operator
 // pressed Show or Hide. The first poll after load only records the current
@@ -535,6 +783,8 @@ function applyGfx(s) {
     const markSrc = brandMarks[preset] || brandMarks.waveoce;
     const markImg = byid("toast-mark-img");
     if (markImg.getAttribute("src") !== markSrc) markImg.src = markSrc;
+
+    applyTimeout(s);
 
     const gfx = s.gfx || {};
 
