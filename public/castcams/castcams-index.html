@@ -23,7 +23,11 @@
   }
   .cam-bg {
     position: absolute;
-    background: #6F068E; /* matches the frame artwork's interior fill */
+    /* The strip either side of a 16:9 video in a slightly wider opening. It
+       has to match the frame artwork's own interior or the seam shows, and
+       the two frame sets do not agree: Invitationals is purple, New Dawn is
+       navy. Set per preset in applyLayout rather than fixed here. */
+    background: var(--cam-fill, #6F068E);
     z-index: 1;
   }
   .cam-iframe { z-index: 2; }
@@ -104,6 +108,11 @@
   };
   const defaultFrames = { duo: "DuoCamINV.png", solo: "SingleCamINV.png" };
 
+  /** The interior colour of each preset's frame artwork. */
+  const fillFor = (preset) => ({
+    road2: "#0C1626",     // New Dawn navy
+  }[preset] || "#6F068E"); // Invitationals purple
+
   function frameFor(preset, layout) {
     const set = frameSets[preset] || defaultFrames;
     return "/castcams/frames/" + encodeURIComponent(set[layout] || defaultFrames[layout]);
@@ -136,6 +145,7 @@
     const layout = cam.layout || "none";
     const cams = cam.cams || {};
     const preset = s.event_preset || "waveoce";
+    document.documentElement.style.setProperty("--cam-fill", fillFor(preset));
 
     if (isDeskView) {
       // Off unless desk mode is on, so the source can sit in a scene without
