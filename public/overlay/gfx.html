@@ -133,11 +133,20 @@ html, body {
     --tag-w: 600px;
     --tag-h: 153px;
     --tag-top: 810px;
-    /* Where the blue panel starts and ends, measured off the artwork. The
-       end is not the file width: the grey trim takes the last 12px. */
-    --tag-text-left: 157px;
-    --tag-text-right: 588px;
-    --tag-text-pad: 16px;
+}
+
+/* The panel measured off the artwork, as fractions of the file rather than
+   pixels, so the same tag works at caster size and at desk size without a
+   second set of numbers to keep in step. The blue panel runs 157 to 588 of
+   600: the end is not the file width, because the grey trim takes the last
+   12px and is detail rather than panel. */
+.castertag {
+    --tag-text-left: 26.1667%;   /* 157 / 600 */
+    --tag-text-width: 71.8333%;  /* (588 - 157) / 600 */
+    --tag-text-pad: 2.6667%;     /* 16 / 600 */
+    /* 46px on the 153 tall caster tag, and the same proportion on a smaller
+       one. Long names still shrink from here; this is only the starting size. */
+    --tag-font: calc(var(--tag-h) * 0.3007);
 }
 
 .castertag {
@@ -145,6 +154,10 @@ html, body {
     top: var(--tag-top);
     width: var(--tag-w);
     height: var(--tag-h);
+    --tag-text-left: 26.1667%;
+    --tag-text-width: 71.8333%;
+    --tag-text-pad: 2.6667%;
+    --tag-font: calc(var(--tag-h) * 0.3007);
     background: url("caster-tag-dawn.png") no-repeat center / 100% 100%;
     z-index: 25;
     display: flex;
@@ -161,13 +174,27 @@ html, body {
 #tag-left  { left: 174px; }
 #tag-right { left: 1123px; transition-delay: 0.09s; }
 
+/* Desk tags: one under each of the three desk windows, each the width of its
+   own window so it reads as belonging to that cam. Measured off the same
+   TripleCamDAWN artwork the cams are placed from, which is why the third is
+   not the same width as the other two.
+
+   They share one top rather than following each window's own bottom edge:
+   window 3 sits 5px lower in the artwork, and a row of tags that stepped down
+   by five pixels would look like a mistake rather than a design. */
+.castertag.desk { --tag-top: 790px; }
+
+#tag-d1 { left: 170px;  --tag-w: 458px; --tag-h: 117px; }
+#tag-d2 { left: 735px;  --tag-w: 458px; --tag-h: 117px; transition-delay: 0.07s; }
+#tag-d3 { left: 1306px; --tag-w: 445px; --tag-h: 113px; transition-delay: 0.14s; }
+
 .castertag-name {
     /* The blue panel exactly, with breathing room at each end. The name is
        centred in THIS box rather than in the file: the grey trim down the
        right side is detail, not part of the panel, and centring on the whole
        600px would push every name noticeably right of where it belongs. */
     margin-left: var(--tag-text-left);
-    width: calc(var(--tag-text-right) - var(--tag-text-left));
+    width: var(--tag-text-width);
     padding: 0 var(--tag-text-pad);
     text-align: center;
     /* This box does the clipping. The span inside carries the text and is
@@ -181,7 +208,7 @@ html, body {
 }
 .castertag-name span {
     display: inline-block;
-    font-size: 46px;
+    font-size: var(--tag-font);
     font-weight: bold;
     color: #fff;
     letter-spacing: 2px;
@@ -442,6 +469,11 @@ html, body {
 <!-- Caster name tags, one under each caster cam -->
 <div class="castertag" id="tag-left"><div class="castertag-name"><span id="tag-left-name"></span></div></div>
 <div class="castertag" id="tag-right"><div class="castertag-name"><span id="tag-right-name"></span></div></div>
+
+<!-- Desk tags, up instead of the two above while desk mode is on -->
+<div class="castertag desk" id="tag-d1"><div class="castertag-name"><span id="tag-d1-name"></span></div></div>
+<div class="castertag desk" id="tag-d2"><div class="castertag-name"><span id="tag-d2-name"></span></div></div>
+<div class="castertag desk" id="tag-d3"><div class="castertag-name"><span id="tag-d3-name"></span></div></div>
 <span id="tag-measure"></span>
 
 <!-- Timeout banner -->
@@ -534,8 +566,6 @@ function hideShoutout() {
 
 // ── Caster tags ─────────────────────────────────────────────────────────────
 
-const TAG_FONT_PX = 46;
-
 /**
  * Fit a name inside the blue panel.
  *
@@ -546,10 +576,14 @@ const TAG_FONT_PX = 46;
  * The font-size is what changes, not a transform. Letter-spacing does not
  * scale with font-size, so the first guess is a ratio and then it is measured
  * again and nudged, rather than trusted.
+ *
+ * The starting size is whatever the CSS gives this tag rather than a constant,
+ * because a desk tag is smaller than a caster tag and starting both at 46px
+ * would mean every desk name arrived needing to be shrunk.
  */
 function fitName(el, text) {
     el.textContent = text;
-    el.style.fontSize = TAG_FONT_PX + "px";
+    el.style.fontSize = "";
     if (!text) return;
 
     const box = el.parentElement;
@@ -560,6 +594,9 @@ function fitName(el, text) {
         - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight);
     if (room <= 0) return;
 
+    const base = parseFloat(getComputedStyle(el).fontSize) || 46;
+    const floor = Math.max(12, Math.round(base * 0.44));
+
     const measure = byid("tag-measure");
     const widthAt = (px) => {
         measure.style.fontSize = px + "px";
@@ -567,14 +604,14 @@ function fitName(el, text) {
         return measure.offsetWidth;
     };
 
-    let size = TAG_FONT_PX;
+    let size = base;
     let natural = widthAt(size);
     if (natural <= room) return;
 
-    size = Math.max(20, Math.floor(size * (room / natural)));
+    size = Math.max(floor, Math.floor(size * (room / natural)));
     // Letter-spacing is a fixed number of pixels per character, so the ratio
     // above slightly overshoots. A few single-pixel steps settle it.
-    for (let i = 0; i < 12 && widthAt(size) > room && size > 20; i++) size -= 1;
+    for (let i = 0; i < 12 && widthAt(size) > room && size > floor; i++) size -= 1;
     el.style.fontSize = size + "px";
 }
 
@@ -594,19 +631,52 @@ if (document.fonts && document.fonts.ready) {
     });
 }
 
-function showTags(g, instant = false) {
-    const sides = [
+const CASTER_TAGS = ["tag-left", "tag-right"];
+const DESK_TAGS = ["tag-d1", "tag-d2", "tag-d3"];
+const ALL_TAGS = [...CASTER_TAGS, ...DESK_TAGS];
+
+/**
+ * Which tags belong on screen, and what they say.
+ *
+ * Desk mode swaps the set: three small ones under the desk windows instead of
+ * two big ones under the caster cams. There is still one toggle, because two
+ * would mean remembering to flip both at the moment you are also switching
+ * scenes.
+ *
+ * The desk names are the Label on each desk cam rather than three more fields.
+ * A name typed in one place cannot disagree with itself.
+ */
+function tagsFor(g, camera) {
+    if (camera && camera.desk) {
+        const cams = camera.cams || {};
+        return DESK_TAGS.map((tagId, i) => [
+            tagId, tagId + "-name", (cams["desk" + (i + 1)] || {}).label,
+        ]);
+    }
+    return [
         ["tag-left", "tag-left-name", g.left],
         ["tag-right", "tag-right-name", g.right],
     ];
+}
 
-    for (const [tagId, nameId, value] of sides) {
+function showTags(g, instant = false, camera = null) {
+    const wanted = tagsFor(g, camera);
+    const shown = new Set(wanted.map(([tagId]) => tagId));
+
+    // Whichever set is not in use goes away, or switching into desk mode would
+    // leave the caster tags sitting over the top of it.
+    for (const tagId of ALL_TAGS) {
+        if (!shown.has(tagId)) byid(tagId).classList.remove("show");
+    }
+
+    for (const [tagId, nameId, value] of wanted) {
         const tag = byid(tagId);
         const name = String(value || "").trim();
 
         if (instant) tag.classList.add("no-anim");
 
-        // A side with no name stays off screen, the same as the shoutout.
+        // A tag with no name stays off screen, the same as the shoutout. A desk
+        // of two rather than three is just an empty Label.
         if (!name) { tag.classList.remove("show"); continue; }
 
         fitName(byid(nameId), name);
@@ -616,15 +686,13 @@ function showTags(g, instant = false) {
     if (instant) {
         // Force the browser to apply the shown state before transitions are
         // allowed again, otherwise removing the class animates it after all.
-        void byid("tag-left").offsetWidth;
-        byid("tag-left").classList.remove("no-anim");
-        byid("tag-right").classList.remove("no-anim");
+        void byid(wanted[0][0]).offsetWidth;
+        for (const tagId of ALL_TAGS) byid(tagId).classList.remove("no-anim");
     }
 }
 
 function hideTags() {
-    byid("tag-left").classList.remove("show");
-    byid("tag-right").classList.remove("show");
+    for (const tagId of ALL_TAGS) byid(tagId).classList.remove("show");
 }
 
 // ── Toast ───────────────────────────────────────────────────────────────────
@@ -780,7 +848,7 @@ function applyTimeout(s) {
 // Each graphic carries a `seq` counter. A change in seq means the operator
 // pressed Show or Hide. The first poll after load only records the current
 // seq so a browser-source refresh never replays the last graphic on stream.
-const seen = { shoutout: null, toast: null, castertags: null };
+const seen = { shoutout: null, toast: null, castertags: null, tagContent: null };
 
 function applyGfx(s) {
     const preset = s.event_preset || "waveoce";
@@ -803,13 +871,25 @@ function applyGfx(s) {
     // refreshing the browser source mid-show quietly drops it off stream.
     const tags = gfx.castertags || {};
     const tagSeq = Number(tags.seq) || 0;
+    const camera = (s.matches || {}).camera || {};
+
+    // What the tags should currently read. The seq only moves when somebody
+    // presses Show or Hide, so on its own it would miss desk mode being
+    // flipped and miss a name being corrected mid segment: both change what
+    // belongs on screen without anybody touching the graphic.
+    const tagContent = JSON.stringify(
+        tagsFor(tags, camera).map(([id, , v]) => [id, String(v || "").trim()]));
+
     if (seen.castertags === null) {
         seen.castertags = tagSeq;
-        if (tags.on) showTags(tags, true); else hideTags();
+        if (tags.on) showTags(tags, true, camera); else hideTags();
     } else if (tagSeq !== seen.castertags) {
         seen.castertags = tagSeq;
-        if (tags.on) showTags(tags); else hideTags();
+        if (tags.on) showTags(tags, false, camera); else hideTags();
+    } else if (tags.on && tagContent !== seen.tagContent) {
+        showTags(tags, false, camera);
     }
+    seen.tagContent = tagContent;
 
     const handlers = {
         shoutout: [showShoutout, hideShoutout],
