@@ -26,12 +26,7 @@
     background: #6F068E; /* matches the frame artwork's interior fill */
     z-index: 1;
   }
-  /* Video renders ABOVE the frame. The DAWN frames have their cam windows
-     painted in rather than cut out, so a frame sitting on top hides the video
-     entirely. The video is positioned inside the window, so the frame's border
-     art is unaffected, and the frame's own interior fill becomes the pillarbox
-     either side of the 16:9 video. */
-  .cam-iframe { z-index: 4; }
+  .cam-iframe { z-index: 2; }
   .frame-img {
     position: absolute;
     top: 0;
@@ -56,16 +51,37 @@
   .cam-iframe.solo      { left: 560.5px;  width: 775px; }
   .cam-iframe.duo-left  { left: 87.5px;   width: 775px; }
   .cam-iframe.duo-right { left: 1034.5px; width: 775px; }
+
+  /* Desk: three windows, measured off TripleCamDAWN-blue.png rather than
+     assumed, which is why the third is not the same as the other two. It is
+     13px narrower and 5px taller in the artwork itself.
+
+     These windows are portrait, unlike the duo openings which are nearly 16:9.
+     A webcam cannot fit a portrait box without either huge bars or a crop, so
+     the video fills the window and pull.html's object-fit: cover takes a
+     centre column of the shot. Heads sit fine; shoulders lose their edges. */
+  .cam-bg.desk-1, .cam-iframe.desk-1 { left: 170px;  top: 248px; width: 458px; height: 513px; }
+  .cam-bg.desk-2, .cam-iframe.desk-2 { left: 735px;  top: 248px; width: 458px; height: 513px; }
+  .cam-bg.desk-3, .cam-iframe.desk-3 { left: 1306px; top: 248px; width: 445px; height: 518px; }
 </style>
 </head>
 <body>
 <div id="cam-container"></div>
 
 <script>
-  const accountId = new URLSearchParams(location.search).get("id");
+  const qs = new URLSearchParams(location.search);
+  const accountId = qs.get("id");
   if (!accountId) {
     document.body.innerHTML = "<p style='color:red;padding:40px;font-size:24px;'>Missing ?id= in URL</p>";
   }
+
+  // Two views out of one file. Without ?view=desk this is the caster source
+  // and behaves exactly as it always has, following the Layout dropdown. With
+  // it, this is the desk source: three windows, shown only while desk mode is
+  // ticked, and it ignores Layout entirely. They are separate OBS sources so
+  // either can be on screen without the other.
+  const isDeskView = qs.get("view") === "desk";
+  const DESK_SLOTS = ["desk1", "desk2", "desk3"];
 
   let prevLayout = null;
   let prevLeftUrl = null;
@@ -74,11 +90,17 @@
   let prevPreset = null;
 
   // Track last applied audio per side to avoid spamming postMessage
-  let lastAudio = { left: {}, right: {}, solo: {} };
+  let lastAudio = { left: {}, right: {}, solo: {}, desk1: {}, desk2: {}, desk3: {} };
+  const noAudio = () => ({ left: {}, right: {}, solo: {}, desk1: {}, desk2: {}, desk3: {} });
+  let prevDeskUrls = null;
 
   // Cam frames per event preset. Anything without an entry falls back to INV.
   const frameSets = {
-    road2: { duo: "DuoCamDAWN-blue.png", solo: "SingleCamDAWN-blue.png" },
+    road2: {
+      duo: "DuoCamDAWN-blue.png",
+      solo: "SingleCamDAWN-blue.png",
+      desk: "TripleCamDAWN-blue.png",
+    },
   };
   const defaultFrames = { duo: "DuoCamINV.png", solo: "SingleCamINV.png" };
 
@@ -115,10 +137,44 @@
     const cams = cam.cams || {};
     const preset = s.event_preset || "waveoce";
 
+    if (isDeskView) {
+      // Off unless desk mode is on, so the source can sit in a scene without
+      // showing three empty windows between segments.
+      if (!cam.desk) {
+        if (prevLayout !== "off") {
+          container.innerHTML = "";
+          prevLayout = "off";
+          prevDeskUrls = null;
+          lastAudio = noAudio();
+        }
+        return;
+      }
+
+      const urls = DESK_SLOTS.map(buildViewUrl);
+      const key = urls.join("|");
+      if (prevLayout !== "desk" || prevDeskUrls !== key || prevPreset !== preset) {
+        container.innerHTML = DESK_SLOTS.map((slot, i) => `
+          <div class="cam-bg desk-${i + 1}"></div>
+          <iframe id="iframe-${slot}" class="cam-iframe desk-${i + 1}"
+                  src="${urls[i] || "about:blank"}" allow="autoplay;fullscreen"></iframe>`).join("")
+          + `<img class="frame-img" src="${frameFor(preset, "desk")}" alt="">`;
+        prevLayout   = "desk";
+        prevPreset   = preset;
+        prevDeskUrls = key;
+        lastAudio    = noAudio();
+      }
+
+      for (const slot of DESK_SLOTS) {
+        const frame = document.getElementById("iframe-" + slot);
+        if (frame) sendAudio(frame, slot, cams[slot] || {});
+      }
+      return;
+    }
+
     if (layout === "none") {
       container.innerHTML = "";
       prevLayout = "none";
-      lastAudio = { left: {}, right: {}, solo: {} };
+      lastAudio = noAudio();
       return;
     }
 
@@ -138,7 +194,7 @@
         prevPreset   = preset;
         prevLeftUrl  = leftUrl;
         prevRightUrl = rightUrl;
-        lastAudio    = { left: {}, right: {}, solo: {} };
+        lastAudio    = noAudio();
       }
 
       // Real-time audio
@@ -161,7 +217,7 @@
         prevLayout  = "solo";
         prevPreset  = preset;
         prevSoloUrl = soloUrl;
-        lastAudio   = { left: {}, right: {}, solo: {} };
+        lastAudio   = noAudio();
       }
 
       const iSolo = document.getElementById("iframe-solo");
