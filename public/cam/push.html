@@ -71,6 +71,9 @@ if (!accountId) {
 }
 
 let pc = null;
+let videoSender = null;
+let camTrack = null;
+let micOnly = null;   // null until the first poll has said one way or the other
 let sessionId = null;
 let audioCtx = null;
 let gainNode = null;
@@ -109,9 +112,55 @@ async function fetchCamConfig() {
     const res = await fetch(`${API}/api/overlay/${accountId}`);
     if (!res.ok) return {};
     const data = await res.json();
-    return (data.matches || {}).camera?.cams?.[slot] || {};
+    const camera = (data.matches || {}).camera || {};
+    // The whole camera block rides along, not just this slot: desk mode lives
+    // on the block and the page has to react to it while it is already live.
+    return { ...(camera.cams?.[slot] || {}), _camera: camera };
   } catch {
     return {};
+  }
+}
+
+/**
+ * Desk mode: the casters stay on mic and come off camera.
+ *
+ * Two things are done rather than one. Disabling the track makes the browser
+ * send black instead of a picture, and switching the encoding off stops it
+ * encoding at all, which is the part that actually gives the bandwidth back.
+ * Neither drops the track from the session, so there is no renegotiation and
+ * nothing to go wrong when it comes back on: the picture simply returns.
+ *
+ * The desk cams themselves are never affected. They are the ones on screen.
+ */
+async function applyVideoState(camera) {
+  const isCaster = slot === "left" || slot === "right" || slot === "solo";
+  const want = !!(camera && camera.desk) && isCaster;
+  if (want === micOnly) return;
+  micOnly = want;
+
+  if (camTrack) camTrack.enabled = !want;
+
+  if (videoSender) {
+    try {
+      const params = videoSender.getParameters();
+      if (!params.encodings || !params.encodings.length) params.encodings = [{}];
+      params.encodings[0].active = !want;
+      await videoSender.setParameters(params);
+    } catch {
+      // Older browsers refuse to change encodings after the fact. The track
+      // is still disabled above, which is most of the saving.
+    }
+  }
+
+  // The caster needs to know, or a black preview reads as a fault.
+  if (want) {
+    setStatus("live", "Live · mic only");
+    els.meta.textContent = "Desk mode is on. Your camera is off and your mic is still live.";
+    els.video.style.opacity = "0.25";
+  } else {
+    setStatus("live", "Live");
+    els.meta.textContent = "Keep this tab open while casting.";
+    els.video.style.opacity = "";
   }
 }
 
@@ -201,6 +250,8 @@ async function start() {
   const videoTransceiver = pc.addTransceiver(videoTrack, { direction: "sendonly" });
   const audioTransceiver = pc.addTransceiver(processedAudioTrack, { direction: "sendonly" });
   audioSender = audioTransceiver.sender;
+  videoSender = videoTransceiver.sender;
+  camTrack = videoTrack;
 
   try {
     // Round 1: establish the session itself. sessions/new requires the
@@ -242,11 +293,15 @@ async function start() {
     await registerWithWorker();
     setStatus("live", "Live");
     els.meta.textContent = `Session ${sessionId.slice(0, 8)}… · Keep this tab open while casting.`;
+    // Opening the link while desk mode is already on should come up mic only,
+    // rather than showing a picture for two seconds and then dropping it.
+    await applyVideoState(initialCam._camera);
 
     heartbeatTimer = setInterval(registerWithWorker, 8000);
     pollTimer = setInterval(async () => {
       const cam = await fetchCamConfig();
       applyAudioSettings(cam);
+      applyVideoState(cam._camera);
     }, 2000);
   } catch (e) {
     setStatus("error", "Setup failed");
