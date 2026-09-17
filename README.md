@@ -134,6 +134,17 @@ every time you press it.
 There is a sixth URL, **Clear timeout**, which takes the banner down early. It is
 there for a misfire; only give it a key if you have one going spare.
 
+Each button in that panel also has its key image under it, set in Jefferies so
+the deck matches the broadcast. The preview shown is the file that downloads, so
+there is nothing to match up by hand. Clear the key's **Title** in the Stream
+Deck app after setting one: the words are part of the image, and the app draws
+its own title over the top by default.
+
+The colours carry the meaning. Blue for the three Graphics OP buttons, then
+FF3549 and 28D091 on the timeouts, which are the two colours of the banner
+itself, so the key you press is the colour that appears on stream. Clear is
+deliberately drab: it should not catch your eye mid round.
+
 The three graphics buttons fire whatever is currently typed into Graphics OP.
 They do not carry content of their own, so the words are still yours to set in
 the console before the show.
@@ -163,6 +174,30 @@ Camera video/audio is carried over [Cloudflare Calls](https://developers.cloudfl
 - Adjust **Mic Gain** and **Compressor** - these update live on the caster's page via the Web Audio API, no reload needed.
 - **Noise Suppression / Echo Cancellation / Auto Gain Control / Audio Bitrate** are applied when the caster's page loads (they need to refresh their push link to pick up changes).
 - Volume/Panning/Mute (under "Real-time controls") apply on the overlay side and update instantly.
+
+### Desk mode
+
+A second cam layout for a three person desk, on its own browser source so it
+and the caster cams can each be on screen without the other.
+
+- Tick **Desk mode** in the Camera panel. It applies immediately, no Save press.
+- Send each of the three **Desk** push links out the same way as the casters'.
+- Add a second **Browser Source** in OBS:
+  ```
+  https://overlaysystem.road2.workers.dev/castcams/castcams-index.html?id=ACCOUNT_ID&view=desk
+  ```
+  1920 x 1080. It shows nothing at all while desk mode is off, so it can live in
+  a scene without three empty windows appearing between segments.
+- Your two casters drop to **mic only** for as long as desk mode is on: their
+  camera stops encoding, their audio keeps going, and their push page says so
+  rather than just going black on them. Untick it and the picture comes back
+  with no reconnection.
+- The caster source is left alone either way. Switch scenes as normal.
+
+The desk windows are portrait, unlike the duo openings which are nearly 16:9, so
+a webcam is centre cropped to fill one: roughly **half the width of a 16:9 shot
+is cut**. Heads and shoulders sit fine, but tell desk guests to centre
+themselves and not sit too close.
 
 ### Spotify
 - Check **Show Now Playing** to display the current song on the overlay
