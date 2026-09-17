@@ -137,6 +137,7 @@ html, body {
        end is not the file width: the grey trim takes the last 12px. */
     --tag-text-left: 157px;
     --tag-text-right: 588px;
+    --tag-text-pad: 16px;
 }
 
 .castertag {
@@ -161,10 +162,14 @@ html, body {
 #tag-right { left: 1123px; transition-delay: 0.09s; }
 
 .castertag-name {
-    /* The blue panel, minus breathing room at each end. */
+    /* The blue panel exactly, with breathing room at each end. The name is
+       centred in THIS box rather than in the file: the grey trim down the
+       right side is detail, not part of the panel, and centring on the whole
+       600px would push every name noticeably right of where it belongs. */
     margin-left: var(--tag-text-left);
-    width: calc(var(--tag-text-right) - var(--tag-text-left) - 24px);
-    padding-left: 30px;
+    width: calc(var(--tag-text-right) - var(--tag-text-left));
+    padding: 0 var(--tag-text-pad);
+    text-align: center;
     /* This box does the clipping. The span inside carries the text and is
        what shrinks, because an element cannot both clip its content and
        scale itself out of trouble: overflow is resolved on the untransformed
@@ -548,7 +553,11 @@ function fitName(el, text) {
     if (!text) return;
 
     const box = el.parentElement;
-    const room = box.clientWidth - 30;       // the padding-left
+    // Read the padding rather than hard coding it, so moving the padding in
+    // the CSS cannot quietly leave the auto-fit measuring the wrong width.
+    const pad = getComputedStyle(box);
+    const room = box.clientWidth
+        - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight);
     if (room <= 0) return;
 
     const measure = byid("tag-measure");
