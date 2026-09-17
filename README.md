@@ -199,6 +199,18 @@ a webcam is centre cropped to fill one: roughly **half the width of a 16:9 shot
 is cut**. Heads and shoulders sit fine, but tell desk guests to centre
 themselves and not sit too close.
 
+**Name tags follow the desk.** The caster tags graphic shows two big tags under
+the caster cams normally, and three smaller ones under the desk windows while
+desk mode is on. Still the one toggle in Graphics OP: it swaps sets on its own,
+so there is nothing extra to remember while you are also changing scenes.
+
+The three desk names are the **Label** on each desk cam, so a name is typed once
+and the tag follows it, including a correction made mid segment. A desk seat with
+an empty label simply has no tag, which is how you run a desk of two.
+
+The tags live on the Graphics OP source, not the desk source, so keep that
+browser source in the desk scene as well or the cams will appear without them.
+
 ### Spotify
 - Check **Show Now Playing** to display the current song on the overlay
 - Click **Connect Spotify** to authenticate
