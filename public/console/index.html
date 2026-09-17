@@ -486,6 +486,32 @@
             </select>
           </div>
         </div>
+        <div class="row" style="margin-top:4px;">
+          <div>
+            <label><input type="checkbox" id="cam-desk"> Desk mode</label>
+            <p style="font-size:11px;color:#666;margin:6px 0 0;">
+              Turns on the three window desk source, and drops your two casters
+              to <strong>mic only</strong> so their video is not being uploaded
+              while nobody can see it. Their audio keeps going the whole time.
+              The caster source is left alone: switch scenes as normal.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desk cams -->
+      <div class="card" id="cam-desk-card">
+        <h3>Desk Cameras</h3>
+        <p style="font-size:11px;color:#666;margin:-6px 0 12px;">
+          Three separate people with their own links. Send each one its link the
+          same way you do the casters.
+        </p>
+        <div id="cam-desk-rows"></div>
+        <p style="font-size:11px;color:#555;margin:10px 0 0;">
+          The windows are portrait, so a webcam is centre cropped to fit: heads
+          sit fine, shoulders lose their edges. Worth telling them to sit
+          centred and not too close.
+        </p>
       </div>
 
       <!-- Left Camera -->
@@ -804,6 +830,8 @@ function populateUI(s) {
   const rightCam = cam.cams?.right || {};
   byid("cam-layout").value = cam.layout || "duo";
   byid("cam-solo").value   = cam.solo   || "left";
+  byid("cam-desk").checked = !!cam.desk;
+  renderDeskCams(cam.cams || {});
 
   // Left
   byid("cam-left-label").value    = leftCam.label      || "";
@@ -1339,6 +1367,149 @@ async function saveCamRealtime() {
   // No toast for real-time to avoid spam
 }
 
+// ── Desk cameras ──────────────────────────────────────────────────────────────
+// Three rows, built rather than written out three times, because they are the
+// same row and hand written copies drift. Volume and mute only: gain and the
+// capture settings fall back to the same defaults the casters use.
+
+const DESK_SLOTS = ["desk1", "desk2", "desk3"];
+const deskState = {};
+
+function renderDeskCams(cams) {
+  const host = byid("cam-desk-rows");
+  host.innerHTML = "";
+
+  DESK_SLOTS.forEach((slot, i) => {
+    const saved = cams[slot] || {};
+    deskState[slot] = { mute: !!saved.mute };
+
+    const row = document.createElement("div");
+    row.style.cssText = "padding:12px 0;"
+      + (i < DESK_SLOTS.length - 1 ? "border-bottom:1px solid #222;" : "");
+
+    const head = document.createElement("div");
+    head.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;";
+    const title = document.createElement("strong");
+    title.style.cssText = "font-size:13px;";
+    title.textContent = "Desk " + (i + 1);
+    const dot = document.createElement("span");
+    dot.id = `cam-${slot}-status`;
+    dot.style.cssText = "font-size:11px;color:#666;";
+    dot.textContent = "● checking…";
+    head.appendChild(title);
+    head.appendChild(dot);
+
+    const fields = document.createElement("div");
+    fields.className = "row";
+    fields.innerHTML = `
+      <div>
+        <label>Label</label>
+        <input type="text" id="cam-${slot}-label" placeholder="Desk ${i + 1}">
+      </div>
+      <div>
+        <label>Volume - <span id="cam-${slot}-vol-display">100</span>%</label>
+        <input type="range" id="cam-${slot}-volume" min="0" max="200" value="100" style="width:100%;">
+      </div>
+      <div style="padding-top:18px;flex:0;">
+        <button class="btn secondary" id="cam-${slot}-mute-btn">🔇 Mute</button>
+      </div>`;
+
+    const link = document.createElement("div");
+    link.className = "row";
+    link.style.cssText = "margin-top:8px;";
+    link.innerHTML = `
+      <div>
+        <label>Push Link (send to them - opens camera/mic in their browser)</label>
+        <input type="text" id="cam-${slot}-push" readonly style="color:#888;font-size:11px;">
+      </div>`;
+    const copy = document.createElement("button");
+    copy.className = "btn secondary";
+    copy.style.cssText = "margin-top:18px;flex:0;";
+    copy.textContent = "Copy";
+    link.appendChild(copy);
+
+    row.appendChild(head);
+    row.appendChild(fields);
+    row.appendChild(link);
+    host.appendChild(row);
+
+    // Values, now that the nodes exist.
+    byid(`cam-${slot}-label`).value = saved.label || "";
+    const vol = Math.round((saved.volume ?? 1) * 100);
+    byid(`cam-${slot}-volume`).value = vol;
+    byid(`cam-${slot}-vol-display`).textContent = vol;
+    const p = new URLSearchParams({ slot, id: accountId });
+    byid(`cam-${slot}-push`).value = `${location.origin}/cam/push.html?${p.toString()}`;
+    if (saved.mute) muteLook(slot, true);
+
+    byid(`cam-${slot}-volume`).addEventListener("input", (e) => {
+      byid(`cam-${slot}-vol-display`).textContent = e.target.value;
+      queueDeskRealtime();
+    });
+    byid(`cam-${slot}-mute-btn`).addEventListener("click", () => {
+      deskState[slot].mute = !deskState[slot].mute;
+      muteLook(slot, deskState[slot].mute);
+      queueDeskRealtime();
+    });
+    copy.addEventListener("click", () => {
+      navigator.clipboard.writeText(byid(`cam-${slot}-push`).value).catch(() => {});
+      toast("Desk " + (i + 1) + " link copied ✓");
+    });
+  });
+}
+
+function muteLook(slot, muted) {
+  const btn = byid(`cam-${slot}-mute-btn`);
+  if (!btn) return;
+  btn.textContent = muted ? "🔊 Unmute" : "🔇 Mute";
+  btn.style.background = muted ? "#c0392b" : "";
+}
+
+/** Volume and mute go live like the casters', rather than waiting on Save. */
+let deskTimer = null;
+function queueDeskRealtime() {
+  clearTimeout(deskTimer);
+  deskTimer = setTimeout(() => saveState({ matches: withDeskCams(state.matches || {}) }), 400);
+}
+
+/** What the three desk rows currently say, merged onto what was saved. */
+function deskCamValues(cams = {}) {
+  const out = {};
+  for (const slot of DESK_SLOTS) {
+    if (!byid(`cam-${slot}-label`)) continue;
+    out[slot] = {
+      ...(cams[slot] || {}),
+      label:   byid(`cam-${slot}-label`).value.trim(),
+      volume:  parseInt(byid(`cam-${slot}-volume`).value, 10) / 100,
+      mute:    !!deskState[slot]?.mute,
+    };
+  }
+  return out;
+}
+
+/** The current desk values folded into a matches object. */
+function withDeskCams(existing) {
+  const camera = existing.camera || {};
+  const cams = camera.cams || {};
+  return {
+    ...existing,
+    camera: {
+      ...camera,
+      desk: byid("cam-desk").checked,
+      cams: { ...cams, ...deskCamValues(cams) },
+    },
+  };
+}
+
+// Desk mode itself is not worth a Save press: it changes what is on screen and
+// takes the casters' video down, so it applies the moment it is ticked.
+byid("cam-desk").addEventListener("change", () => {
+  saveState({ matches: withDeskCams(state.matches || {}) });
+  toast(byid("cam-desk").checked
+    ? "Desk mode on. Casters are mic only."
+    : "Desk mode off. Caster video is back.");
+});
+
 // Full save
 byid("save-cam").addEventListener("click", () => {
   const existing = state.matches || {};
@@ -1351,7 +1522,9 @@ byid("save-cam").addEventListener("click", () => {
       camera: {
         layout: byid("cam-layout").value,
         solo: byid("cam-solo").value,
+        desk: byid("cam-desk").checked,
         cams: {
+          ...deskCamValues(cams),
           left: {
             ...(cams.left || {}),
             label:       byid("cam-left-label").value.trim(),
