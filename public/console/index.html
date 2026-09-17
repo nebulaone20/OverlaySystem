@@ -361,7 +361,12 @@
 
       <!-- Caster name tags -->
       <div class="card" style="margin-top:14px;">
-        <h3 style="font-size:14px;margin:0 0 12px;">Caster Name Tags</h3>
+        <h3 style="font-size:14px;margin:0 0 6px;">Caster Name Tags</h3>
+        <p style="font-size:11px;color:#666;margin:0 0 12px;">
+          While <strong>desk mode</strong> is on, these two are replaced by three
+          smaller tags under the desk windows, named from each desk cam's Label
+          in the Camera panel. Same Show and Hide either way.
+        </p>
 
         <div class="row">
           <div>
@@ -1648,7 +1653,20 @@ byid("gfx-tags-show").addEventListener("click", async () => {
   const left  = byid("gfx-tag-left").value.trim();
   const right = byid("gfx-tag-right").value.trim();
 
-  if (!left && !right) { toast("Enter at least one name", "err"); return; }
+  // In desk mode the tags read the desk cam Labels, not these two fields, so
+  // checking these would refuse to show a perfectly good set of desk tags
+  // just because the caster names happen to be blank.
+  //
+  // The controls are read rather than the last saved state: a label typed a
+  // moment ago has not necessarily been sent yet, and refusing to show a name
+  // that is plainly on screen is the kind of thing that wastes a minute of a
+  // live show.
+  if (byid("cam-desk").checked) {
+    const named = DESK_SLOTS.some((slot) => byid(`cam-${slot}-label`)?.value.trim());
+    if (!named) { toast("Add a Label to at least one desk cam", "err"); return; }
+  } else if (!left && !right) {
+    toast("Enter at least one name", "err"); return;
+  }
 
   const ok = await saveGfx({
     // No duration: these stay up until Hide. The seq bump is still what the
