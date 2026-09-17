@@ -66,6 +66,16 @@ function generateId(length = 32) {
     return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+/**
+ * The camera slots that exist.
+ *
+ * left and right are the casters; desk1 to desk3 are the desk. It is written
+ * once rather than three times because it was three copies of the same regex,
+ * and adding the desk to two of them would have left the third quietly
+ * rejecting the delete on unload.
+ */
+const CAMERA_SLOT_PATH = /^\/api\/camera\/([^/]+)\/(left|right|solo|desk1|desk2|desk3)$/;
+
 // ── Cloudflare Calls (Realtime SFU) proxy ──────────────────────────────────
 // The push/pull pages talk to these instead of the Calls API directly, so
 // CALLS_APP_SECRET never touches the browser. Track/session IDs themselves
@@ -648,7 +658,7 @@ export default {
         // Caster's push.html registers/heartbeats its current Calls session here.
         // No login required — same trust model as the public overlay poll endpoint;
         // the accountId itself is the capability (mirrors the old VDO push-link design).
-        const cameraPutMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        const cameraPutMatch = pathname.match(CAMERA_SLOT_PATH);
         if (cameraPutMatch && method === "PUT") {
             const [, accountId, slot] = cameraPutMatch;
             const { sessionId, videoTrack, audioTrack } = await request.json();
@@ -669,7 +679,7 @@ export default {
         // ── GET /api/camera/:accountId/:slot ──────────────────────────────────
         // pull.html polls this to find out what to pull (and whether the caster
         // is still alive — anything older than ~15s is treated as offline).
-        const cameraGetMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        const cameraGetMatch = pathname.match(CAMERA_SLOT_PATH);
         if (cameraGetMatch && method === "GET") {
             const [, accountId, slot] = cameraGetMatch;
             const row = await env.DB.prepare(
@@ -682,7 +692,7 @@ export default {
 
         // ── DELETE /api/camera/:accountId/:slot ───────────────────────────────
         // Caster's push.html calls this (best-effort, on unload) to go offline immediately.
-        const cameraDeleteMatch = pathname.match(/^\/api\/camera\/([^/]+)\/(left|right|solo)$/);
+        const cameraDeleteMatch = pathname.match(CAMERA_SLOT_PATH);
         if (cameraDeleteMatch && method === "DELETE") {
             const [, accountId, slot] = cameraDeleteMatch;
             await env.DB.prepare("DELETE FROM camera_sessions WHERE account_id = ? AND slot = ?").bind(accountId, slot).run();
