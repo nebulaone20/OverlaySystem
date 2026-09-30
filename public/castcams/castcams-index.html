@@ -113,15 +113,37 @@
   };
   const defaultFrames = { duo: "DuoCamINV.png", solo: "SingleCamINV.png" };
 
-  /** The interior colour of each preset's frame artwork. */
+  /**
+   * The strip either side of a 16:9 video in a slightly wider opening. It has
+   * to match the interior of whichever frame artwork is up, or the seam shows.
+   *
+   * Navy for everything, including presets with no frames of their own. The
+   * Invitationals artwork is purple inside, so if those frames ever come back
+   * into use, give that preset "#6F068E" here rather than changing the default.
+   */
   const fillFor = (preset) => ({
-    road2: "#0C1626",
-  }[preset] || "#0C1626"); // Invitationals purple
+    // waveoce: "#6F068E",   // Invitationals purple, if that artwork returns
+  }[preset] || "#0C1626");
 
+  /**
+   * The frame artwork for this preset and layout, or "" when there is none.
+   *
+   * Not every preset has every layout: there is no Invitationals triple, and
+   * asking for one used to build a path ending in "undefined" and put a broken
+   * image over the cams. Better to show the cams with no frame than to show a
+   * frame that does not exist.
+   */
   function frameFor(preset, layout) {
     const set = frameSets[preset] || defaultFrames;
-    return "/castcams/frames/" + encodeURIComponent(set[layout] || defaultFrames[layout]);
+    const file = set[layout] || defaultFrames[layout];
+    return file ? "/castcams/frames/" + encodeURIComponent(file) : "";
   }
+
+  /** The frame layer, or nothing at all. */
+  const frameTag = (preset, layout) => {
+    const src = frameFor(preset, layout);
+    return src ? `<img class="frame-img" src="${src}" alt="">` : "";
+  };
 
   function buildViewUrl(slot) {
     const p = new URLSearchParams({ id: accountId, slot });
@@ -172,7 +194,7 @@
           <div class="cam-bg desk-${i + 1}"></div>
           <iframe id="iframe-${slot}" class="cam-iframe desk-${i + 1}"
                   src="${urls[i] || "about:blank"}" allow="autoplay;fullscreen"></iframe>`).join("")
-          + `<img class="frame-img" src="${frameFor(preset, "desk")}" alt="">`;
+          + `${frameTag(preset, "desk")}`;
         prevLayout   = "desk";
         prevPreset   = preset;
         prevDeskUrls = key;
@@ -204,7 +226,7 @@
           <div class="cam-bg duo-right"></div>
           <iframe id="iframe-left"  class="cam-iframe duo-left"  src="${leftUrl  || "about:blank"}" allow="autoplay;fullscreen"></iframe>
           <iframe id="iframe-right" class="cam-iframe duo-right" src="${rightUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          <img class="frame-img" src="${frameFor(preset, "duo")}" alt="">`;
+          ${frameTag(preset, "duo")}`;
         prevLayout   = "duo";
         prevPreset   = preset;
         prevLeftUrl  = leftUrl;
@@ -228,7 +250,7 @@
         container.innerHTML = `
           <div class="cam-bg solo"></div>
           <iframe id="iframe-solo" class="cam-iframe solo" src="${soloUrl || "about:blank"}" allow="autoplay;fullscreen"></iframe>
-          <img class="frame-img" src="${frameFor(preset, "solo")}" alt="">`;
+          ${frameTag(preset, "solo")}`;
         prevLayout  = "solo";
         prevPreset  = preset;
         prevSoloUrl = soloUrl;
