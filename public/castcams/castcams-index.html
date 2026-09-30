@@ -100,7 +100,7 @@
 
   // Cam frames per event preset. Anything without an entry falls back to INV.
   const frameSets = {
-    road2: {
+    : {
       duo: "DuoCamDAWN-blue.png",
       solo: "SingleCamDAWN-blue.png",
       desk: "TripleCamDAWN-blue.png",
@@ -115,7 +115,8 @@
 
   /** The interior colour of each preset's frame artwork. */
   const fillFor = (preset) => ({
-    road2: "#0C1626",     // New Dawn navy
+    road2: "#0C1626",
+    pheonix: "#0C1626",
   }[preset] || "#6F068E"); // Invitationals purple
 
   function frameFor(preset, layout) {
