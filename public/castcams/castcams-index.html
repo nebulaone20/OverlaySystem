@@ -116,8 +116,7 @@
   /** The interior colour of each preset's frame artwork. */
   const fillFor = (preset) => ({
     road2: "#0C1626",
-    pheonix: "#0C1626",
-  }[preset] || "#6F068E"); // Invitationals purple
+  }[preset] || "#0C1626"); // Invitationals purple
 
   function frameFor(preset, layout) {
     const set = frameSets[preset] || defaultFrames;
