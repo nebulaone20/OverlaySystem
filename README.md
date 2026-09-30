@@ -98,6 +98,33 @@ Pressing Show again replays the animation even if the text has not changed.
 - Type the event name shown in the timer bar (e.g. `Road 2 Invitationals - Group Stage - Day 1`)
 - Click **Save Event Name**
 
+### What is on a name tag
+
+Three lines, left aligned a few pixels clear of the logo block:
+
+```
+H3NERS          the name
+@kjplays        Twitter / X, the @ added for you
+she/her         pronouns
+```
+
+Only the name is required. Leave the handle or the pronouns blank and that line
+is dropped, with what is left recentred in the panel, so a name on its own sits
+in the middle rather than hanging at the top with a hole under it.
+
+Every line shrinks to fit rather than running past the end of the panel, so a
+long name or a long handle is smaller but never cut.
+
+Casters fill these in on the Graphics OP panel; desk people on their row in the
+Camera panel.
+
+The tag artwork follows the **event preset**, the same way the sponsor logos and
+the cam frames do, along with the colour of the handle line so it reads against
+that panel. Adding a series means dropping its 600x153 tag in `public/overlay/`
+and adding one line to `tagArt` in `gfx.html`; every set shares the same
+geometry, so nothing else moves. A preset with no tag of its own falls back to
+New Dawn rather than losing its background.
+
 ### Timeout
 - Set remaining timeouts for each team
 - Set **Attacking Side**. This is the one thing to keep current: set it at the
@@ -204,9 +231,10 @@ the caster cams normally, and three smaller ones under the desk windows while
 desk mode is on. Still the one toggle in Graphics OP: it swaps sets on its own,
 so there is nothing extra to remember while you are also changing scenes.
 
-The three desk names are the **Label** on each desk cam, so a name is typed once
-and the tag follows it, including a correction made mid segment. A desk seat with
-an empty label simply has no tag, which is how you run a desk of two.
+The desk tags are filled in from each desk cam's row in the Camera panel, so a
+name is typed once and the tag follows it, including a correction made mid
+segment. A desk seat with an empty Label simply has no tag, which is how you run
+a desk of two.
 
 The tags live on the Graphics OP source, not the desk source, so keep that
 browser source in the desk scene as well or the cams will appear without them.
