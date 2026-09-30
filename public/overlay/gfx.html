@@ -158,7 +158,10 @@ html, body {
     --tag-text-width: 71.8333%;
     --tag-text-pad: 2.6667%;
     --tag-font: calc(var(--tag-h) * 0.3007);
-    background: url("caster-tag-dawn.png") no-repeat center / 100% 100%;
+    /* Set per event preset in applyGfx, so a new series brings its own tag
+       artwork without touching the layout: every set shares the same 600x153
+       geometry, dark logo block to x144 and grey trim from x588. */
+    background: var(--tag-art, url("caster-tag-dawn.png")) no-repeat center / 100% 100%;
     z-index: 25;
     display: flex;
     align-items: center;
@@ -188,39 +191,67 @@ html, body {
 #tag-d2 { left: 735px;  --tag-w: 458px; --tag-h: 117px; transition-delay: 0.07s; }
 #tag-d3 { left: 1306px; --tag-w: 445px; --tag-h: 113px; transition-delay: 0.14s; }
 
-.castertag-name {
-    /* The blue panel exactly, with breathing room at each end. The name is
-       centred in THIS box rather than in the file: the grey trim down the
-       right side is detail, not part of the panel, and centring on the whole
-       600px would push every name noticeably right of where it belongs. */
+/* The blue panel exactly: name, handle and pronouns stacked and left aligned
+   a few pixels clear of the dark logo block, rather than centred. The grey
+   trim down the right side is detail rather than panel, which is why the box
+   ends at 588 of 600 and not at the file width.
+
+   Centred as a group, so a person with no handle sits in the middle of the
+   panel on their own instead of hanging at the top with a hole underneath. */
+.castertag-body {
     margin-left: var(--tag-text-left);
     width: var(--tag-text-width);
+    height: 100%;
     padding: 0 var(--tag-text-pad);
-    text-align: center;
-    /* This box does the clipping. The span inside carries the text and is
-       what shrinks, because an element cannot both clip its content and
-       scale itself out of trouble: overflow is resolved on the untransformed
-       box, so scaling the clipper just shrinks an already-cut name. */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
     overflow: hidden;
-    white-space: nowrap;
     opacity: 0;
     transition: opacity 0.26s ease 0.16s;
 }
-.castertag-name span {
+.castertag.show .castertag-body { opacity: 1; }
+
+/* Each line clips; the span inside is what shrinks. An element cannot both
+   clip its content and scale itself out of trouble: overflow resolves on the
+   untransformed box, so scaling the clipper just shrinks an already-cut name. */
+.tag-line {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    line-height: 1.12;
+}
+.tag-line span {
     display: inline-block;
-    font-size: var(--tag-font);
-    font-weight: bold;
+    white-space: nowrap;
     color: #fff;
+}
+
+.tag-name span {
+    font-size: calc(var(--tag-h) * 0.255);
+    font-weight: bold;
     letter-spacing: 2px;
     text-transform: uppercase;
-    white-space: nowrap;
 }
-.castertag.show .castertag-name { opacity: 1; }
+.tag-handle span {
+    font-size: calc(var(--tag-h) * 0.150);
+    font-weight: bold;
+    letter-spacing: 1px;
+    /* Per preset too: the light blue that reads well on the New Dawn panel
+       disappears into the gold one. */
+    color: var(--tag-handle, #7FC4F5);
+}
+.tag-pronouns span {
+    font-size: calc(var(--tag-h) * 0.125);
+    letter-spacing: 1px;
+    color: rgba(255, 255, 255, 0.72);
+}
 
 /* Applied for one frame when restoring state after a refresh, so the tag is
    simply there rather than animating in on a live stream. */
 .castertag.no-anim,
-.castertag.no-anim .castertag-name { transition: none !important; }
+.castertag.no-anim .castertag-body { transition: none !important; }
 
 /* Offscreen twin, purely to measure a name's natural width. */
 #tag-measure {
@@ -230,10 +261,10 @@ html, body {
     top: -9999px;
     left: -9999px;
     display: inline-block;
-    font-weight: bold;
-    letter-spacing: 2px;
-    text-transform: uppercase;
     white-space: nowrap;
+    /* Weight, tracking and case are copied from whichever line is being
+       measured rather than fixed here: the three lines do not share them, and
+       measuring a handle as bold uppercase would report it far too wide. */
     font-family: "Jefferies", Arial, sans-serif;
 }
 
@@ -467,13 +498,43 @@ html, body {
 </div>
 
 <!-- Caster name tags, one under each caster cam -->
-<div class="castertag" id="tag-left"><div class="castertag-name"><span id="tag-left-name"></span></div></div>
-<div class="castertag" id="tag-right"><div class="castertag-name"><span id="tag-right-name"></span></div></div>
+<div class="castertag" id="tag-left">
+  <div class="castertag-body">
+    <div class="tag-line tag-name"><span id="tag-left-name"></span></div>
+    <div class="tag-line tag-handle"><span id="tag-left-handle"></span></div>
+    <div class="tag-line tag-pronouns"><span id="tag-left-pronouns"></span></div>
+  </div>
+</div>
+<div class="castertag" id="tag-right">
+  <div class="castertag-body">
+    <div class="tag-line tag-name"><span id="tag-right-name"></span></div>
+    <div class="tag-line tag-handle"><span id="tag-right-handle"></span></div>
+    <div class="tag-line tag-pronouns"><span id="tag-right-pronouns"></span></div>
+  </div>
+</div>
 
 <!-- Desk tags, up instead of the two above while desk mode is on -->
-<div class="castertag desk" id="tag-d1"><div class="castertag-name"><span id="tag-d1-name"></span></div></div>
-<div class="castertag desk" id="tag-d2"><div class="castertag-name"><span id="tag-d2-name"></span></div></div>
-<div class="castertag desk" id="tag-d3"><div class="castertag-name"><span id="tag-d3-name"></span></div></div>
+<div class="castertag desk" id="tag-d1">
+  <div class="castertag-body">
+    <div class="tag-line tag-name"><span id="tag-d1-name"></span></div>
+    <div class="tag-line tag-handle"><span id="tag-d1-handle"></span></div>
+    <div class="tag-line tag-pronouns"><span id="tag-d1-pronouns"></span></div>
+  </div>
+</div>
+<div class="castertag desk" id="tag-d2">
+  <div class="castertag-body">
+    <div class="tag-line tag-name"><span id="tag-d2-name"></span></div>
+    <div class="tag-line tag-handle"><span id="tag-d2-handle"></span></div>
+    <div class="tag-line tag-pronouns"><span id="tag-d2-pronouns"></span></div>
+  </div>
+</div>
+<div class="castertag desk" id="tag-d3">
+  <div class="castertag-body">
+    <div class="tag-line tag-name"><span id="tag-d3-name"></span></div>
+    <div class="tag-line tag-handle"><span id="tag-d3-handle"></span></div>
+    <div class="tag-line tag-pronouns"><span id="tag-d3-pronouns"></span></div>
+  </div>
+</div>
 <span id="tag-measure"></span>
 
 <!-- Timeout banner -->
@@ -513,6 +574,16 @@ const byid = (id) => document.getElementById(id);
 const brandColors = {
     road2:   "#31A2EE",
     waveoce: "rgb(10, 105, 164)",
+};
+
+/* Caster tag artwork per preset, and the handle colour that reads on it. */
+const tagArt = {
+    road2:   "caster-tag-dawn.png",
+    pheonix: "caster-tag-pheonix.png",
+};
+const tagHandle = {
+    road2:   "#7FC4F5",
+    pheonix: "#FFC46B",
 };
 
 const brandMarks = {
@@ -594,10 +665,15 @@ function fitName(el, text) {
         - parseFloat(pad.paddingLeft) - parseFloat(pad.paddingRight);
     if (room <= 0) return;
 
-    const base = parseFloat(getComputedStyle(el).fontSize) || 46;
-    const floor = Math.max(12, Math.round(base * 0.44));
+    const own = getComputedStyle(el);
+    const base = parseFloat(own.fontSize) || 46;
+    const floor = Math.max(10, Math.round(base * 0.44));
 
     const measure = byid("tag-measure");
+    measure.style.fontWeight = own.fontWeight;
+    measure.style.letterSpacing = own.letterSpacing;
+    measure.style.textTransform = own.textTransform;
+
     const widthAt = (px) => {
         measure.style.fontSize = px + "px";
         measure.textContent = text;
@@ -649,14 +725,23 @@ const ALL_TAGS = [...CASTER_TAGS, ...DESK_TAGS];
 function tagsFor(g, camera) {
     if (camera && camera.desk) {
         const cams = camera.cams || {};
-        return DESK_TAGS.map((tagId, i) => [
-            tagId, tagId + "-name", (cams["desk" + (i + 1)] || {}).label,
-        ]);
+        return DESK_TAGS.map((tagId, i) => {
+            const cam = cams["desk" + (i + 1)] || {};
+            return [tagId, {
+                name: cam.label, handle: cam.handle, pronouns: cam.pronouns,
+            }];
+        });
     }
     return [
-        ["tag-left", "tag-left-name", g.left],
-        ["tag-right", "tag-right-name", g.right],
+        ["tag-left", { name: g.left, handle: g.leftHandle, pronouns: g.leftPronouns }],
+        ["tag-right", { name: g.right, handle: g.rightHandle, pronouns: g.rightPronouns }],
     ];
+}
+
+/** A handle as it should read on air: one @, whether or not they typed it. */
+function atHandle(value) {
+    const clean = String(value || "").trim().replace(/^@+/, "");
+    return clean ? "@" + clean : "";
 }
 
 function showTags(g, instant = false, camera = null) {
@@ -669,9 +754,9 @@ function showTags(g, instant = false, camera = null) {
         if (!shown.has(tagId)) byid(tagId).classList.remove("show");
     }
 
-    for (const [tagId, nameId, value] of wanted) {
+    for (const [tagId, person] of wanted) {
         const tag = byid(tagId);
-        const name = String(value || "").trim();
+        const name = String(person.name || "").trim();
 
         if (instant) tag.classList.add("no-anim");
 
@@ -679,7 +764,21 @@ function showTags(g, instant = false, camera = null) {
         // of two rather than three is just an empty Label.
         if (!name) { tag.classList.remove("show"); continue; }
 
-        fitName(byid(nameId), name);
+        // An empty line is removed rather than left blank, and the three are
+        // centred as a group, so a name on its own sits in the middle of the
+        // panel instead of hanging at the top.
+        const lines = [
+            ["name", name],
+            ["handle", atHandle(person.handle)],
+            ["pronouns", String(person.pronouns || "").trim()],
+        ];
+        for (const [kind, value] of lines) {
+            const span = byid(`${tagId}-${kind}`);
+            span.parentElement.hidden = !value;
+            if (value) fitName(span, value);
+            else span.textContent = "";
+        }
+
         tag.classList.add("show");
     }
 
@@ -857,6 +956,11 @@ function applyGfx(s) {
         brandColors[preset] || brandColors.waveoce
     );
 
+    const art = tagArt[preset] || tagArt.road2;
+    document.documentElement.style.setProperty("--tag-art", `url("${art}")`);
+    document.documentElement.style.setProperty(
+        "--tag-handle", tagHandle[preset] || tagHandle.road2);
+
     const markSrc = brandMarks[preset] || brandMarks.waveoce;
     const markImg = byid("toast-mark-img");
     if (markImg.getAttribute("src") !== markSrc) markImg.src = markSrc;
@@ -877,8 +981,10 @@ function applyGfx(s) {
     // presses Show or Hide, so on its own it would miss desk mode being
     // flipped and miss a name being corrected mid segment: both change what
     // belongs on screen without anybody touching the graphic.
-    const tagContent = JSON.stringify(
-        tagsFor(tags, camera).map(([id, , v]) => [id, String(v || "").trim()]));
+    const tagContent = JSON.stringify(tagsFor(tags, camera).map(([id, p]) => [
+        id, String(p.name || "").trim(),
+        String(p.handle || "").trim(), String(p.pronouns || "").trim(),
+    ]));
 
     if (seen.castertags === null) {
         seen.castertags = tagSeq;
